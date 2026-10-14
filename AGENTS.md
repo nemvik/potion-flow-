@@ -6,7 +6,7 @@
 - Keep the game engine pure and separate from React, animation, storage, and audio.
 - Every shipped level requires a replayable, validated solution certificate. A timeout is not proof of unsolvability.
 - Preserve unit counts, capacities, collector invariants, and atomic moves. Finished regular bottles remain playable until the level ends.
-- Initial scope: 30 levels, Classic + Collector, local persistence, current-state hints, mobile-first UI. No backend, monetization, analytics, PWA, or daily mode in this scope.
+- Current scope: 50 levels (the original 30 boards and certificates remain unchanged), Classic + Collector, local persistence, current-state hints, mobile-first UI. No backend, monetization, analytics, PWA, or daily mode in this scope.
 - Reuse the existing package manager; use pnpm for an empty project. No paid services or deployment without permission.
 - Implement in milestones and maintain `docs/PROGRESS.md`; do not stop after making a plan.
 - Run typecheck, lint, engine tests, all-level validation, browser tests, and a production build. Record actual commands and results.

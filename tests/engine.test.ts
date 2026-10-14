@@ -244,7 +244,7 @@ describe("aktuální nápověda a skóre", () => {
       expect(starsFor(Math.ceil(par * 1.35) + 1, par)).toBe(1);
     }
   });
-  it("výsledky jsou idempotentní, nezhoršují se a neodemknou 31", () => {
+  it("výsledky jsou idempotentní, nezhoršují se a neodemknou 51", () => {
     const a = recordWin({}, classic, 3),
       b = recordWin(a, classic, 6);
     expect(b).toBe(a);
@@ -253,12 +253,15 @@ describe("aktuální nápověda a skóre", () => {
     expect(
       unlocked(
         Object.fromEntries(
-          Array.from({ length: 30 }, (_, i) => [
+          Array.from({ length: 50 }, (_, i) => [
             i + 1,
             { stars: 1, bestMoves: 999 },
           ]),
         ),
       ),
-    ).toBe(30);
+    ).toBe(50);
+  });
+  it("původně dokončená kampaň nově odemkne level 31", () => {
+    expect(unlocked(Object.fromEntries(Array.from({ length: 30 }, (_, i) => [i + 1, { stars: 3, bestMoves: 30 }])))).toBe(31);
   });
 });

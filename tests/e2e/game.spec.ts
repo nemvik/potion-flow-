@@ -35,7 +35,7 @@ async function seed(page: Page, id = 1, moves: Move[] = [], reduced = false) {
 test("celá kampaň skutečnými UI tahy, hvězdy, postup a finále", async ({
   page,
 }) => {
-  test.setTimeout(240000);
+  test.setTimeout(480000);
   const errors: string[] = [],
     external: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -61,25 +61,25 @@ test("celá kampaň skutečnými UI tahy, hvězdy, postup a finále", async ({
     for (const m of level.solution) await pour(page, m);
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByRole("dialog")).toContainText(
-      level.id === 30 ? "Kampaň dokončena!" : "Lektvary roztříděny!",
+      level.id === levels.length ? "Kampaň dokončena!" : "Lektvary roztříděny!",
     );
     expect((await state(page)).moves).toBe(level.parMoves);
     await page
       .getByRole("dialog")
       .getByRole("button", {
-        name: level.id === 30 ? "Zpět na levely" : "Další level",
+        name: level.id === levels.length ? "Zpět na levely" : "Další level",
         exact: true,
       })
       .click();
   }
   await expect(
-    page.getByRole("button", { name: /Level 30, Sběr, hotovo, 3 hvězd/ }),
+    page.getByRole("button", { name: /Level 50, Sběr, hotovo, 3 hvězd/ }),
   ).toBeVisible();
   const raw = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!),
     STORAGE_KEY,
   );
-  expect(Object.keys(raw.results)).toHaveLength(30);
+  expect(Object.keys(raw.results)).toHaveLength(levels.length);
   expect(
     Object.values(raw.results).every(
       (r) => (r as { stars: number }).stars === 3,
@@ -312,7 +312,7 @@ for (const [width, height] of [
   [768, 1024],
   [1440, 900],
 ]) {
-  for (const id of [28, 30])
+  for (const id of [49, 50])
     test(`layout ${width}×${height}, level ${id}`, async ({ page }) => {
       await page.setViewportSize({ width, height });
       await seed(page, id, [], true);

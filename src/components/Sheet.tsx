@@ -6,12 +6,14 @@ export function Sheet({
   children,
   className = "",
   closable = true,
+  decoration,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
   className?: string;
   closable?: boolean;
+  decoration?: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null),
     close = useRef(onClose);
@@ -55,6 +57,7 @@ export function Sheet({
         if (e.target === e.currentTarget && closable) close.current();
       }}
     >
+      {decoration}
       <div className="sheet">
         {closable && (
           <button

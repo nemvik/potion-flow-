@@ -9,6 +9,7 @@ import {
   replay,
   type Level,
 } from "./model";
+import { LEVEL_COUNT, LEVELS_PER_CHAPTER } from "./campaign";
 // Exhaust all <= 8! color renamings, sorting bottles each time: exact duplicate check up to both symmetries.
 export function shapeKey(level: Level): string {
   const colors = [...new Set(level.bottles.flat())];
@@ -40,8 +41,8 @@ export function validateLevel(level: Level): void {
     level.catalogVersion !== CATALOG_VERSION ||
     !Number.isInteger(level.id) ||
     level.id < 1 ||
-    level.id > 30 ||
-    level.chapter !== Math.ceil(level.id / 10)
+    level.id > LEVEL_COUNT ||
+    level.chapter !== Math.ceil(level.id / LEVELS_PER_CHAPTER)
   )
     throw Error("Neplatná metadata levelu");
   if (
@@ -77,6 +78,8 @@ export function validateLevel(level: Level): void {
     p.bottles.length > 10
   )
     throw Error(`Level ${level.id}: počty baněk/barev`);
+  if (level.id > 30 && n !== (level.collector ? 7 : 8))
+    throw Error("Pokročilé kapitoly vyžadují plný počet barev");
   if (
     p.bottles.filter((b) => b.length === 0).length !== 2 ||
     p.bottles.some((b) => b.length !== 0 && b.length !== 4)
@@ -93,11 +96,12 @@ export function validateLevel(level: Level): void {
   if (!isWon(finish, level))
     throw Error(`Level ${level.id}: certifikát nevyhrál`);
 }
-export function validateCatalog(levels: Level[], expected = 30): void {
+export function validateCatalog(levels: Level[], expected = LEVEL_COUNT): void {
   if (levels.length !== expected) throw Error(`Očekáváno ${expected} levelů`);
   const shapes = new Set<string>(),
     ids = new Set<number>();
-  for (const l of levels) {
+  for (const [index, l] of levels.entries()) {
+    if (l.id !== index + 1) throw Error("Nesouvislé pořadí levelů");
     validateLevel(l);
     const key = shapeKey(l);
     if (shapes.has(key) || ids.has(l.id))

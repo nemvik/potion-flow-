@@ -20,6 +20,7 @@ import {
   type Target,
 } from "./game/model";
 import { getLevel } from "./levels";
+import { LEVEL_COUNT } from "./game/campaign";
 import { persist, type Settings } from "./storage/save";
 import { useApp, type Action } from "./state";
 import { sound } from "./audio/sound";
@@ -28,6 +29,7 @@ import {
   Bottle,
   BottleVisual,
   CHAPTERS,
+  CHAPTER_NUMERALS,
   COLORS,
   Collector,
   DecorativeBottle,
@@ -39,6 +41,7 @@ import {
   type LiquidTransfer,
 } from "./components/Visuals";
 import { Sheet } from "./components/Sheet";
+import { Confetti } from "./components/Confetti";
 import type { SearchResult } from "./game/solver";
 interface Animation {
   before: Position;
@@ -539,14 +542,14 @@ export default function App() {
               )}
               <div className="resume-meta">
                 <span>
-                  <b>{complete}</b> / 30 hotovo
+                  <b>{complete}</b> / {LEVEL_COUNT} hotovo
                 </span>
                 <span>
-                  <b className="gold">★ {total}</b> / 90
+                  <b className="gold">★ {total}</b> / {LEVEL_COUNT * 3}
                 </span>
                 <span>
                   Kapitola{" "}
-                  <b>{["I", "II", "III"][Math.ceil(current / 10) - 1]}</b>
+                  <b>{CHAPTER_NUMERALS[Math.ceil(current / 10) - 1]}</b>
                 </span>
               </div>
             </div>
@@ -563,7 +566,7 @@ export default function App() {
                 <Icon name="i-back" />
               </button>
               <h1>Levely</h1>
-              <span className="star-total" aria-label={`${total} z 90 hvězd`}>
+              <span className="star-total" aria-label={`${total} z ${LEVEL_COUNT * 3} hvězd`}>
                 <Icon name="i-star" />
                 {total}
               </span>
@@ -590,7 +593,7 @@ export default function App() {
                     <div className="chapter-head">
                       <div>
                         <div className="num">
-                          Kapitola {["I", "II", "III"][c]}
+                          Kapitola {CHAPTER_NUMERALS[c]}
                         </div>
                         <h2>{chapter}</h2>
                       </div>
@@ -707,7 +710,7 @@ export default function App() {
                   </span>
                 </div>
                 <div className="chap">
-                  Kapitola {["I", "II", "III"][level.chapter - 1]} ·{" "}
+                  Kapitola {CHAPTER_NUMERALS[level.chapter - 1]} ·{" "}
                   {CHAPTERS[level.chapter - 1]}
                 </div>
               </div>
@@ -821,7 +824,6 @@ export default function App() {
                         }
                         invalid={invalid === index}
                         onClick={() => onBottle(index)}
-                        corked={!!won && !animation}
                       />
                     ))}
                   </div>
@@ -1003,15 +1005,16 @@ export default function App() {
           level && (
             <Sheet
               title={
-                level.id === 30 ? "Kampaň dokončena!" : "Lektvary roztříděny!"
+                level.id === LEVEL_COUNT ? "Kampaň dokončena!" : "Lektvary roztříděny!"
               }
               onClose={() => act({ type: "nav", screen: "levels" })}
               className="win"
               closable={false}
+              decoration={!reduced ? <Confetti /> : undefined}
             >
               <p className="eyebrow">
-                {level.id === 30
-                  ? "Všech 30 levelů je hotovo"
+                {level.id === LEVEL_COUNT
+                  ? `Všech ${LEVEL_COUNT} levelů je hotovo`
                   : `Level ${level.id} dokončen`}
               </p>
               <div
@@ -1044,11 +1047,11 @@ export default function App() {
               </div>
               <div className="sheet-actions">
                 {button(
-                  level.id === 30 ? "grid" : "play",
-                  level.id === 30 ? "Zpět na levely" : "Další level",
+                  level.id === LEVEL_COUNT ? "grid" : "play",
+                  level.id === LEVEL_COUNT ? "Zpět na levely" : "Další level",
                   () =>
                     act(
-                      level.id === 30
+                      level.id === LEVEL_COUNT
                         ? { type: "nav", screen: "levels" }
                         : { type: "start", id: level.id + 1 },
                     ),

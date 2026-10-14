@@ -13,7 +13,7 @@ Hra je hotová pouze tehdy, když jsou implementované funkce skutečně ověře
 7. Barvy se nemíchají, žádná baňka nepřekročí kapacitu a počty jednotek všech barev se po libovolné legální sérii nemění.
 8. Náhodně generované legální sekvence ověří invarianty a přesný návrat celé sekvence pomocí undo. Zahrň oba režimy.
 9. Classic nekončí při částečně naplněných jednobarevných baňkách stejné barvy; končí jen podle přesné podmínky.
-10. Plná jednobarevná běžná baňka může být zdroj, pokud board ještě není vyhraný.
+10. Plná jednobarevná běžná baňka má viditelný špunt a zlatou pečeť, přesto může být zdroj, pokud board ještě není vyhraný. Výběr špunt skryje a undo správně obnoví dokončený vzhled.
 11. Sběr přijímá jen cílovou vrchní barvu, dodržuje kapacitu osm a neztrácí jednotky z celkového součtu.
 12. Ze sběrné baňky nelze nalévat, ale lze vrátit poslední nalití pomocí undo.
 13. Samotná plná sběrná baňka bez dokončení běžných barev není vítězství.
@@ -25,8 +25,8 @@ Hra je hotová pouze tehdy, když jsou implementované funkce skutečně ověře
 
 ## B. Katalog, solver a skóre
 
-19. Existuje přesně 30 jedinečných levelů; Sběr používají přesně ID 5, 10, 15, 20, 25 a 30.
-20. Pro všech 30 levelů sedí kapacity, počty barev, počet počátečních prázdných baněk a limity velikosti boardu.
+19. Existuje přesně 50 jedinečných levelů; Sběr používají přesně ID 5, 10, 15, 20, 25, 30, 35, 40, 45 a 50. Původních 30 zadání a certifikátů se nezměnilo.
+20. Pro všech 50 levelů sedí kapacity, počty barev, počet počátečních prázdných baněk a limity velikosti boardu.
 21. Každé uložené řešení se přehraje od začátku, každý krok je legální a poslední stav vyhraje. Samotné tvrzení generátoru nestačí.
 22. Žádný startovní level není již vyřešený. Katalog nemá zjevné duplikáty vzniklé jen přejmenováním barev/permutací lahví.
 23. `parMoves` je délka ověřené rozumné cesty; UI ji neoznačuje za optimální, pokud optimalita nebyla dokázána.
@@ -37,7 +37,7 @@ Hra je hotová pouze tehdy, když jsou implementované funkce skutečně ověře
 28. Opožděná odpověď workeru se ignoruje po novém tahu, undo, restartu a změně levelu.
 29. Dlouhá žádost o hint neblokuje UI; lze ji zneplatnit přechodem či novým stavem.
 30. Hvězdy odpovídají všem hraničním hodnotám vzorce a starší lepší výsledek se nepřepíše horším.
-31. Odemknutí postupu je správné, vítězství je idempotentní a level 30 neodemyká neexistující level 31.
+31. Odemknutí postupu je správné, vítězství je idempotentní a level 30 odemyká 31 a level 50 neodemyká neexistující level 51. Starý postup i rozehrání se po rozšíření obnoví.
 
 ## C. Ukládání
 
@@ -67,10 +67,16 @@ Hra je hotová pouze tehdy, když jsou implementované funkce skutečně ověře
 ## Povinné výstupy
 
 - Zdrojový projekt, lockfile a README s reálnými příkazy pro spuštění a statický build.
-- 30 katalogových levelů a jejich řešení, generátor a validátor.
+- 50 katalogových levelů a jejich řešení, generátor a validátor.
 - Provedené unit/E2E testy a konzistentní skripty typecheck/lint/build.
 - `artifacts/screenshots/`: nejméně mobilní Classic, mobilní Sběr, největší board, výhra, výběr levelů a desktop. K nim screenshoty relevantní designové reference pro porovnání.
 - `artifacts/QA_REPORT.md`: spuštěné příkazy, pass/fail, prohlížeče a viewporty, screenshoty, skutečné platformy, zbylá omezení a problémy.
 - `docs/PROGRESS.md`: dokončené milníky a důležitá rozhodnutí.
 
 Headless WebKit je test WebKitu v daném prostředí, nikoli důkaz fyzického testování na iPhonu. Tvrzení „60 FPS na iPhonu“ nebo „funguje ve všech prohlížečích“ vyžaduje skutečné příslušné měření/test. Pokud chybí dostupný nástroj pro vizuální prohlídku, uveď to jako neověřenou část a nedeklaruj vizuální shodu.
+
+## Rozšíření — oslava a pokročilé kapitoly
+
+- Konfety se objeví až po posledním přelití, neblokují Další level a samy zmizí. Při obou typech reduced motion se nezobrazují.
+- Levely 31–50 splňují doložené prahy promíchání, barevného rozptylu a délky certifikátu z GAME_SPEC. Všechna řešení se přehrají i přes skutečné UI.
+- Ověřit mobilní i desktopovou podobu nové kapitoly a přechod starého uloženého finále L30 → L31.

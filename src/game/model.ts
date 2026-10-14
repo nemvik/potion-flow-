@@ -1,3 +1,4 @@
+import { LEVEL_COUNT } from "./campaign";
 export const COLOR_IDS = ["R", "O", "Y", "G", "B", "V", "P", "W"] as const;
 export type Color = (typeof COLOR_IDS)[number];
 export type Target = number | "collector";
@@ -246,6 +247,6 @@ export function recordWin(
 }
 export function unlocked(results: Record<number, Result>): number {
   let n = 1;
-  while (n < 30 && results[n]) n++;
+  while (n < LEVEL_COUNT && results[n]) n++;
   return n;
 }

@@ -9,6 +9,7 @@ import {
   type Result,
 } from "../game/model";
 import { getLevel } from "../levels";
+import { LEVEL_COUNT } from "../game/campaign";
 export interface Settings {
   sound: boolean;
   reduced: boolean;
@@ -57,7 +58,7 @@ export function decode(raw: string | null): { save: Save; notice: string } {
         if (typeof value.settings[key] === "boolean")
           save.settings[key] = value.settings[key];
     if (object(value.results))
-      for (let id = 1; id <= 30; id++) {
+      for (let id = 1; id <= LEVEL_COUNT; id++) {
         const r = value.results[id];
         if (
           object(r) &&

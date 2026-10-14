@@ -15,7 +15,10 @@ export const CHAPTERS = [
   "Učňovská dílna",
   "Měsíční laboratoř",
   "Hvězdná destilerie",
+  "Mistrovská observatoř",
+  "Prastarý archiv",
 ];
+export const CHAPTER_NUMERALS = ["I", "II", "III", "IV", "V"];
 export function css(vars: Record<string, string | number>): CSSProperties {
   return vars as CSSProperties;
 }
@@ -144,7 +147,6 @@ export function Bottle({
   hint,
   invalid,
   onClick,
-  corked = false,
   pouring = false,
   transfer,
 }: {
@@ -155,10 +157,10 @@ export function Bottle({
   hint: 1 | 2 | null;
   invalid: boolean;
   onClick: () => void;
-  corked?: boolean;
   pouring?: boolean;
   transfer?: LiquidTransfer;
 }) {
+  const done = isDone(units) && !transfer;
   const description = units.length
     ? "odspodu " + units.map((c) => COLORS[c].name).join(", ")
     : "prázdná";
@@ -166,7 +168,7 @@ export function Bottle({
     <button
       type="button"
       data-bottle={index}
-      aria-label={`Baňka ${index + 1}: ${description}, volno ${4 - units.length}${isDone(units) ? ", hotová" : ""}`}
+      aria-label={`Baňka ${index + 1}: ${description}, volno ${4 - units.length}${done ? ", hotová" : ""}`}
       aria-pressed={selected}
       onClick={onClick}
       className={[
@@ -175,13 +177,20 @@ export function Bottle({
         target ? "is-target" : "",
         hint === 1 ? "is-hint-from" : hint === 2 ? "is-hint-to" : "",
         invalid ? "is-invalid" : "",
-        isDone(units) ? "is-done" : "",
-        corked ? "is-corked" : "",
+        done ? "is-done" : "",
+        done && !selected && !pouring ? "is-corked" : "",
         pouring ? "is-pour-source" : "",
       ].join(" ")}
       style={css({ "--done-c": `var(--liq-${units[0] ?? "R"})` })}
     >
       <BottleVisual units={units} transfer={transfer} />
+      {done && !pouring && (
+        <span className="bottle-seal" aria-hidden="true">
+          <svg viewBox="0 0 20 20">
+            <path d="m5 10 3.2 3.2L15 6.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      )}
       {hint && (
         <span className="badge n" aria-hidden="true">
           {hint}

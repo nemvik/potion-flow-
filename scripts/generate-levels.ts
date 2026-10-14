@@ -10,14 +10,15 @@ import {
 } from "../src/game/model";
 import { solveLevel } from "../src/game/solver";
 import { shapeKey, validateCatalog } from "../src/game/catalog-validation";
+import { LEVEL_COUNT } from "../src/game/campaign";
 const seed = Number(
   process.argv.find((a) => a.startsWith("--seed="))?.split("=")[1] ?? 74129,
 );
 const count = Number(
-  process.argv.find((a) => a.startsWith("--count="))?.split("=")[1] ?? 30,
+  process.argv.find((a) => a.startsWith("--count="))?.split("=")[1] ?? LEVEL_COUNT,
 );
-if (!Number.isSafeInteger(seed) || ![5, 30].includes(count))
-  throw Error("Použij --seed=<celé číslo> a --count=5|30");
+if (!Number.isSafeInteger(seed) || ![5, 30, LEVEL_COUNT].includes(count))
+  throw Error(`Použij --seed=<celé číslo> a --count=5|30|${LEVEL_COUNT}`);
 let rng = seed >>> 0;
 function random() {
   rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0;
@@ -78,7 +79,8 @@ for (let id = 1; id <= count; id++) {
   const mode = id % 5 === 0 ? "collector" : "classic",
     chapter = Math.ceil(id / 10);
   let accepted: Level | undefined;
-  for (let attempt = 0; attempt < 100 && !accepted; attempt++) {
+  const maxAttempts = id > 30 ? 1000 : 100;
+  for (let attempt = 0; attempt < maxAttempts && !accepted; attempt++) {
     const n =
       id <= 3
         ? id === 3
@@ -93,7 +95,7 @@ for (let id = 1; id <= count; id++) {
               ? 5
               : 6
             : mode === "collector"
-              ? id === 30
+              ? id >= 30
                 ? 7
                 : 6
               : id < 24
@@ -142,9 +144,21 @@ for (let id = 1; id <= count; id++) {
           ? "Volné místo a skládání bloků."
           : id <= 20
             ? "Více střídání vrstev a volba pořadí."
-            : "Plánování osmi barev; ponech si volný buffer.",
+            : id <= 30
+              ? "Plánování osmi barev; ponech si volný buffer."
+              : id <= 40
+                ? "Mistrovská směs: rozptýlené barvy, odkrývání hlubokých vrstev a dva buffery."
+                : "Velmistrovská směs: téměř samé jednotlivé vrstvy; plánuj několik přesunů dopředu.",
       ...(handcrafted[id - 1] ?? {}),
     };
+    if (id > 30) {
+      const transitions = bottles.reduce(
+        (sum, b) => sum + b.filter((c, i) => i > 0 && c !== b[i - 1]).length,
+        0,
+      );
+      const spread = Math.min(...colors.map((c) => bottles.filter((b) => b.includes(c)).length));
+      if (transitions < (id <= 40 ? 22 : 23) || spread < 3) continue;
+    }
     if (isWon(initial(base), base)) continue;
     if (!base.solution.length) {
       const found = solveLevel(base, { maxMs: 1800, maxStates: 100000 });
@@ -152,6 +166,7 @@ for (let id = 1; id <= count; id++) {
       base.solution = found.solution;
     }
     base.parMoves = base.solution.length;
+    if (id > 30 && base.parMoves < (id <= 40 ? 30 : 31)) continue;
     if (!isWon(replay(base), base))
       throw Error("Generátor našel chybný certifikát");
     const shape = shapeKey(base);
@@ -161,7 +176,7 @@ for (let id = 1; id <= count; id++) {
   }
   if (!accepted)
     throw Error(
-      `Level ${id}: limit 100 kandidátů vyčerpán; neověřená data nebyla uložena`,
+      `Level ${id}: limit ${maxAttempts} kandidátů vyčerpán; neověřená data nebyla uložena`,
     );
   levels.push(accepted);
   console.log(

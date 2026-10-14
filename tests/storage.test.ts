@@ -6,7 +6,7 @@ import {
   persist,
   serialize,
 } from "../src/storage/save";
-import { initial, play, recordWin, undo } from "../src/game/model";
+import { initial, play, recordWin, replay, undo, unlocked } from "../src/game/model";
 import { levels } from "../src/levels";
 import { reducer, type AppState } from "../src/state";
 const roundTrip = () => {
@@ -17,6 +17,22 @@ const roundTrip = () => {
   return save;
 };
 describe("odolná persistence", () => {
+  it("přidané levely zachovají starý postup i dokončený level 30", () => {
+    const save = defaults();
+    save.results = Object.fromEntries(levels.slice(0, 30).map(l => [l.id, { stars: 3, bestMoves: l.parMoves }]));
+    save.game = replay(levels[29]);
+    const restored = decode(serialize(save));
+    expect(restored.notice).toBe("");
+    expect(restored.save).toEqual(save);
+    expect(unlocked(restored.save.results)).toBe(31);
+  });
+  it.each([31, 40, 50])("nový level %i obnoví výsledky i rozehrání", (id) => {
+    const save = defaults();
+    const level = levels[id - 1];
+    save.results[id] = { stars: 2, bestMoves: level.parMoves + 1 };
+    save.game = play(initial(level), level, level.solution[0]);
+    expect(decode(serialize(save)).save).toEqual(save);
+  });
   it("obnoví sběr i historii a umožní přesné undo", () => {
     const save = roundTrip(),
       result = decode(serialize(save));

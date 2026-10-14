@@ -341,3 +341,78 @@ button {
 .collector.is-empty .tall-fill::before {
   display: none;
 }
+
+[data-chapter="4"] {
+  --pf-chapter: #f2cf88;
+  --pf-bg-glow: #365352;
+}
+[data-chapter="5"] {
+  --pf-chapter: #f3adcb;
+  --pf-bg-glow: #493e63;
+}
+.bottle.is-done .pad {
+  height: 16px;
+  background: radial-gradient(closest-side, #ffe08a9c, #ffe08a24 65%, transparent);
+}
+.bottle-seal {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  transform: translateX(-50%);
+  border: 1px solid #fff1b6;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #fff0b0, #d99b3f);
+  color: #4b3215;
+  box-shadow: 0 2px 5px #0005;
+  pointer-events: none;
+}
+.bottle-seal svg {
+  width: 18px;
+  height: 18px;
+}
+.sheet {
+  z-index: 1;
+}
+.confetti {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.confetti span {
+  position: absolute;
+  top: -16px;
+  width: 7px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--confetti-color);
+  animation: confetti-fall var(--fall) ease-in var(--delay) both;
+}
+.confetti span:nth-child(3n) {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+@keyframes confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(0);
+  }
+  10%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--drift), 105dvh, 0) rotate(var(--spin));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti {
+    display: none;
+  }
+}

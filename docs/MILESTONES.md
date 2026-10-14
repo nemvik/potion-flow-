@@ -29,3 +29,7 @@ Brána: ulož screenshoty a QA report, popiš spuštění, provedené testy a p�
 ## Nyní neimplementovat
 
 Denní výzvu, nekonečný generovaný režim, PWA/service worker, cloud save, účty, skiny s obchodem, měnu, reklamy, analytics, multiplayer, žebříčky, překážky či další typy lahví. Mohou následovat až po ověření zábavnosti a stability stávajícího rozsahu.
+
+## M5 — dokončené lahve, oslava a rozšíření kampaně
+
+Přidat špunty a zlaté označení plných jednobarevných lahví při zachování legálních tahů a undo. Přidat krátkou oslavu konfetami respektující reduced motion. Rozšířit katalog na 50 levelů dvěma obtížnějšími kapitolami, přitom zachovat původních 30 levelů i verzovaný save. Ověřit všechna řešení, deterministické generování, celou kampaň přes UI, kompatibilitu starého finále a mobilní vizuál.
