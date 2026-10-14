@@ -1,0 +1,103 @@
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="pf-glass-fill" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#bef0f0" stop-opacity=".20"/>
+      <stop offset=".22" stop-color="#bef0f0" stop-opacity=".06"/>
+      <stop offset=".7" stop-color="#bef0f0" stop-opacity=".03"/>
+      <stop offset="1" stop-color="#bef0f0" stop-opacity=".16"/>
+    </linearGradient>
+    <linearGradient id="pf-hl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".6"/>
+      <stop offset=".6" stop-color="#fff" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#fff" stop-opacity=".02"/>
+    </linearGradient>
+    <linearGradient id="pf-cork-gradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8a5a2e"/><stop offset=".35" stop-color="#d49a5f"/><stop offset="1" stop-color="#7b4f27"/>
+    </linearGradient>
+    <linearGradient id="pf-star-g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff0a8"/><stop offset="1" stop-color="#ffb52e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Bottle geometry: viewBox 0 0 64 180, vnitřek pro kapalinu x 7–57, y 53–173 (4 × 30) -->
+  <symbol id="pf-glass-back" viewBox="0 0 64 180">
+    <path d="M21 14V30C21 38 4 38 4 50V160Q4 176 20 176H44Q60 176 60 160V50C60 38 43 38 43 30V14Z" fill="url(#pf-glass-fill)"/>
+    <ellipse cx="32" cy="172" rx="24" ry="3.5" fill="#000" opacity=".18"/>
+  </symbol>
+  <symbol id="pf-glass-front" viewBox="0 0 64 180">
+    <path d="M21 14V30C21 38 4 38 4 50V160Q4 176 20 176H44Q60 176 60 160V50C60 38 43 38 43 30V14Z" fill="none" stroke="var(--glass-stroke)" stroke-width="1.6"/>
+    <rect x="17" y="5" width="30" height="9" rx="4.5" fill="#d7faf8" fill-opacity=".16" stroke="var(--glass-stroke)" stroke-width="1.6"/>
+    <rect x="9" y="58" width="4.2" height="98" rx="2.1" fill="url(#pf-hl)"/>
+    <path d="M11 50C11 45 16 41 22 39" fill="none" stroke="#fff" stroke-opacity=".38" stroke-width="2.2" stroke-linecap="round"/>
+    <rect x="24" y="16" width="2.6" height="13" rx="1.3" fill="#fff" fill-opacity=".3"/>
+    <rect x="51.5" y="64" width="2.4" height="34" rx="1.2" fill="#fff" fill-opacity=".16"/>
+    <g stroke="#fff" stroke-opacity=".32" stroke-width="1.3" stroke-linecap="round">
+      <line x1="50" y1="83" x2="55" y2="83"/><line x1="50" y1="113" x2="55" y2="113"/><line x1="50" y1="143" x2="55" y2="143"/>
+    </g>
+  </symbol>
+  <symbol id="pf-cork" viewBox="0 0 64 180">
+    <rect x="19.5" y="-4" width="25" height="18" rx="3.5" fill="url(#pf-cork-gradient)"/>
+    <ellipse cx="32" cy="-4" rx="12.5" ry="3" fill="#e2b07c"/>
+    <g fill="#5e3b1a" opacity=".45"><circle cx="26" cy="4" r="1"/><circle cx="36" cy="8" r="1.1"/><circle cx="31" cy="11" r=".8"/></g>
+  </symbol>
+
+  <!-- Collector (tall) geometry: viewBox 0 0 100 260, vnitřek x 9–91, y 62–247 (8 × 23.125) -->
+  <symbol id="pf-col-back" viewBox="0 0 100 260">
+    <path d="M34 14V34C34 46 6 46 6 60V228Q6 250 28 250H72Q94 250 94 228V60C94 46 66 46 66 34V14Z" fill="url(#pf-glass-fill)"/>
+  </symbol>
+  <symbol id="pf-col-front" viewBox="0 0 100 260">
+    <path d="M34 14V34C34 46 6 46 6 60V228Q6 250 28 250H72Q94 250 94 228V60C94 46 66 46 66 34V14Z" fill="none" stroke="var(--glass-stroke)" stroke-width="1.8"/>
+    <rect x="30" y="4" width="40" height="11" rx="5.5" fill="#d7faf8" fill-opacity=".16" stroke="var(--glass-stroke)" stroke-width="1.8"/>
+    <rect x="12" y="68" width="5" height="150" rx="2.5" fill="url(#pf-hl)"/>
+    <path d="M14 58C14 52 22 47 31 45" fill="none" stroke="#fff" stroke-opacity=".38" stroke-width="2.6" stroke-linecap="round"/>
+    <g stroke="#fff" stroke-opacity=".34" stroke-width="1.4" stroke-linecap="round">
+      <line x1="80" y1="223.9" x2="88" y2="223.9"/><line x1="80" y1="200.75" x2="88" y2="200.75"/>
+      <line x1="80" y1="177.6" x2="88" y2="177.6"/><line x1="74" y1="154.5" x2="88" y2="154.5" stroke-opacity=".55"/>
+      <line x1="80" y1="131.4" x2="88" y2="131.4"/><line x1="80" y1="108.25" x2="88" y2="108.25"/>
+      <line x1="80" y1="85.1" x2="88" y2="85.1"/>
+    </g>
+  </symbol>
+  <symbol id="pf-col-cork" viewBox="0 0 100 260">
+    <rect x="32" y="-6" width="36" height="22" rx="4" fill="url(#pf-cork-gradient)"/>
+    <ellipse cx="50" cy="-6" rx="18" ry="3.6" fill="#e2b07c"/>
+  </symbol>
+
+  <!-- Color symbols (viewBox 0 0 20 20) -->
+  <symbol id="pf-sym-R" viewBox="0 0 20 20"><circle cx="10" cy="10" r="5.6" fill="currentColor"/></symbol>
+  <symbol id="pf-sym-O" viewBox="0 0 20 20"><path d="M10 3.4 16.8 15.6H3.2Z" fill="currentColor" stroke="currentColor" stroke-linejoin="round" stroke-width="1.2"/></symbol>
+  <symbol id="pf-sym-Y" viewBox="0 0 20 20"><path d="m10 2.6 2.2 4.7 5.1.6-3.8 3.5 1 5.1L10 14l-4.5 2.5 1-5.1-3.8-3.5 5.1-.6z" fill="currentColor"/></symbol>
+  <symbol id="pf-sym-G" viewBox="0 0 20 20"><path d="M10 2.6 17.4 10 10 17.4 2.6 10z" fill="currentColor"/></symbol>
+  <symbol id="pf-sym-B" viewBox="0 0 20 20"><rect x="4.4" y="4.4" width="11.2" height="11.2" rx="1.6" fill="currentColor"/></symbol>
+  <symbol id="pf-sym-V" viewBox="0 0 20 20"><path d="M7.9 3.4h4.2v4.5h4.5v4.2h-4.5v4.5H7.9v-4.5H3.4V7.9h4.5z" fill="currentColor"/></symbol>
+  <symbol id="pf-sym-P" viewBox="0 0 20 20"><path d="M10 16.6S3.4 12.6 3.4 8.1A3.4 3.4 0 0 1 10 6.3a3.4 3.4 0 0 1 6.6 1.8c0 4.5-6.6 8.5-6.6 8.5z" fill="currentColor"/></symbol>
+  <symbol id="pf-sym-W" viewBox="0 0 20 20"><circle cx="10" cy="10" r="5" fill="none" stroke="currentColor" stroke-width="2.8"/></symbol>
+
+  <!-- UI icons (viewBox 0 0 24 24, stroke) -->
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/><circle cx="12" cy="12" r="6.6"/></g></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6 4.5 10.5 9 15"/><path d="M5 10.5h9a5.5 5.5 0 0 1 0 11h-3"/></g></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21.2h4"/><path d="M12 2.8a6.2 6.2 0 0 0-3.8 11.1c.7.6 1 1.3 1 2.1V16h5.6v-.1c0-.8.3-1.5 1-2.1A6.2 6.2 0 0 0 12 2.8z"/></g></symbol>
+  <symbol id="i-restart" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 3.5v5h-5"/></g></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></g></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2.6 2.8 6 6.5.7-4.9 4.4 1.4 6.5L12 16.9l-5.8 3.3 1.4-6.5-4.9-4.4 6.5-.7z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6L4.8 18.2A2 2 0 0 0 6.6 21h10.8a2 2 0 0 0 1.8-2.8L14 9V3"/><path d="M7.3 15h9.4" /></g></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="4" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2"/></g></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12.5 19V5L7.5 9.5z"/><path d="M16 9a4.2 4.2 0 0 1 0 6M18.6 6.4a8 8 0 0 1 0 11.2"/></g></symbol>
+  <symbol id="i-motion" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 8h9M3 12h13M3 16h7"/><circle cx="18.5" cy="8" r="2"/></g></symbol>
+  <symbol id="i-shapes" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><circle cx="7.5" cy="7.5" r="3.5"/><rect x="13" y="4" width="7" height="7" rx="1.4"/><path d="M7.5 13.5 11.5 20h-8z"/><path d="M16.5 13.2l3.6 3.6-3.6 3.6-3.6-3.6z"/></g></symbol>
+  <symbol id="i-stuck" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8 15.5c1-1.2 2.3-1.8 4-1.8s3 .6 4 1.8M9 9.5h.01M15 9.5h.01"/></g></symbol>
+  <symbol id="i-drop" viewBox="0 0 34 34"><path d="M17 3C17 3 6 15.5 6 22a11 11 0 0 0 22 0C28 15.5 17 3 17 3z" fill="currentColor"/><path d="M11.5 22.5a5.5 5.5 0 0 0 4 5" stroke="#fff" stroke-opacity=".55" stroke-width="2.2" fill="none" stroke-linecap="round"/></symbol>
+
+  <!-- Alchemický znak na pozadí plochy -->
+  <symbol id="pf-sigil" viewBox="0 0 200 200">
+    <g fill="none" stroke="currentColor" stroke-width="1">
+      <circle cx="100" cy="100" r="96"/><circle cx="100" cy="100" r="88" stroke-dasharray="2 5"/>
+      <circle cx="100" cy="100" r="60"/>
+      <path d="M100 12 176 144H24Z"/><path d="M100 188 24 56H176Z"/>
+      <circle cx="100" cy="100" r="22"/>
+      <path d="M100 4v16M100 180v16M4 100h16M180 100h16"/>
+    </g>
+  </symbol>
+</svg>

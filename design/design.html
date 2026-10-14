@@ -1,0 +1,1515 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a262c">
+<title>Potion Flow — design</title>
+<!--
+  POTION FLOW — vizuální předloha + klikací prototyp
+  ---------------------------------------------------
+  • Otevři přímo v prohlížeči (bez buildu, bez CDN, bez vzdálených assetů).
+  • Herní plochu ovládáš klepnutím: zdroj → cíl. Demonstrační levely (1, 5, 7, 28)
+    mají solverem ověřené řešení; nápověda používá jen tento certifikát.
+  • Přepínač „Náhled" (vlevo / na mobilu svislý štítek vpravo) NENÍ součástí hry.
+  • Komponenty jsou označené atributem data-component:
+      Bottle, LiquidLayer, Collector, GameHUD, ActionBar, LevelTile, WinDialog
+    (+ pomocné: Toast, Coach, Sheet, ChapterHeader). Zapni „Zobrazit komponenty".
+  • Tokeny jsou CSS proměnné v :root (prefix --pf-, --liq-).
+-->
+<style>
+/* =========================================================
+   1. TOKENS
+   ========================================================= */
+:root{
+  /* — surfaces (tmavý petrolej) — */
+  --pf-bg-0:#051417;
+  --pf-bg-1:#0a262c;
+  --pf-bg-2:#103b43;
+  --pf-bg-glow:#17525b;
+  --pf-surface:rgb(214 245 240 / .06);
+  --pf-surface-2:rgb(214 245 240 / .10);
+  --pf-surface-3:rgb(214 245 240 / .16);
+  --pf-line:rgb(190 240 236 / .16);
+  --pf-line-strong:rgb(190 240 236 / .30);
+  --pf-scrim:rgb(3 12 14 / .66);
+
+  /* — text — */
+  --pf-text:#ecf7f3;
+  --pf-text-dim:#9cc2bf;
+  --pf-text-faint:#6f9894;
+
+  /* — accents (UI, ne tekutiny) — */
+  --pf-gold:#ffc46b;
+  --pf-gold-deep:#f0973a;
+  --pf-gold-shadow:#a95b17;
+  --pf-gold-ink:#2b1604;
+  --pf-hint:#ffe08a;
+  --pf-target:#9ff0d6;
+  --pf-danger:#ff9a85;
+  --pf-star:#ffd35c;
+  --pf-star-off:rgb(214 245 240 / .18);
+  --pf-chapter:#e8a96a;         /* přepisuje data-chapter */
+
+  /* — tekutiny: stabilní ID → barva; symbol pro odlišení — */
+  --liq-R:#ee4a5d;  /* Rubín     – kruh       */
+  --liq-O:#ff8b2b;  /* Jantar    – trojúhelník */
+  --liq-Y:#ffd447;  /* Citrín    – hvězda     */
+  --liq-G:#33c47a;  /* Smaragd   – kosočtverec */
+  --liq-B:#3f8cff;  /* Azurit    – čtverec    */
+  --liq-V:#9b6cff;  /* Ametyst   – kříž       */
+  --liq-P:#ff7cc8;  /* Růženín   – srdce      */
+  --liq-W:#eef4f1;  /* Perla     – prsten     */
+  --liq-symbol:rgb(6 22 26 / .58);
+
+  /* — glass — */
+  --glass-stroke:rgb(215 250 248 / .55);
+  --glass-hl:rgb(255 255 255 / .55);
+
+  /* — typography (jen lokální/systémová písma) — */
+  --pf-font-display:"Baloo 2","Fredoka",ui-rounded,"SF Pro Rounded","Nunito","Avenir Next","Trebuchet MS",system-ui,sans-serif;
+  --pf-font-ui:ui-rounded,"SF Pro Rounded","Nunito","Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;
+  --pf-fs-2xs:11px;
+  --pf-fs-xs:12px;
+  --pf-fs-sm:14px;
+  --pf-fs-md:16px;
+  --pf-fs-lg:20px;
+  --pf-fs-xl:26px;
+  --pf-fs-2xl:36px;
+  --pf-fw-regular:500;
+  --pf-fw-bold:700;
+  --pf-fw-black:850;
+
+  /* — spacing (4px grid) — */
+  --pf-sp-1:4px; --pf-sp-2:8px; --pf-sp-3:12px; --pf-sp-4:16px;
+  --pf-sp-5:20px; --pf-sp-6:24px; --pf-sp-8:32px; --pf-sp-10:40px;
+  --pf-gutter:16px;
+
+  /* — radii — */
+  --pf-r-sm:10px; --pf-r-md:16px; --pf-r-lg:22px; --pf-r-xl:28px; --pf-r-pill:999px;
+
+  /* — touch — */
+  --pf-touch:48px;
+  --pf-action-h:58px;
+
+  /* — motion — */
+  --pf-dur-fast:120ms;
+  --pf-dur-select:160ms;
+  --pf-dur-travel:190ms;   /* let baňky k cíli a zpět */
+  --pf-dur-pour:320ms;     /* samotné nalití (250–400 ms) */
+  --pf-dur-shake:260ms;
+  --pf-dur-dialog:240ms;
+  --pf-ease-out:cubic-bezier(.2,.8,.2,1);
+  --pf-ease-in-out:cubic-bezier(.6,0,.3,1);
+  --pf-ease-spring:cubic-bezier(.34,1.56,.64,1);
+
+  /* — safe areas (ve frame náhledu simulované) — */
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --safe-left:env(safe-area-inset-left,0px);
+  --safe-right:env(safe-area-inset-right,0px);
+}
+[data-chapter="1"]{--pf-chapter:#e8a96a; --pf-bg-glow:#17525b}
+[data-chapter="2"]{--pf-chapter:#86d8e6; --pf-bg-glow:#16506a}
+[data-chapter="3"]{--pf-chapter:#c3a6ff; --pf-bg-glow:#2a4766}
+
+/* =========================================================
+   2. BASE
+   ========================================================= */
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:#0d1013;
+  color:var(--pf-text);
+  font-family:var(--pf-font-ui);
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+  overflow:hidden;
+}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:disabled{cursor:default}
+:focus-visible{outline:3px solid var(--pf-hint);outline-offset:3px;border-radius:12px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+svg{display:block}
+
+/* =========================================================
+   3. PROTOTYPE SHELL (NÁHLED) — vizuálně oddělené od hry
+   ========================================================= */
+.proto{display:flex;height:100dvh;height:100vh;height:100dvh}
+.preview{
+  width:272px;flex:none;height:100%;overflow-y:auto;
+  background:repeating-linear-gradient(135deg,#15191d 0 14px,#171b20 14px 28px);
+  border-right:2px dashed #3a4148;
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:12px;color:#c9d1d9;padding:16px 14px 40px;
+}
+.preview h1{font-size:13px;margin:0 0 2px;letter-spacing:.08em;color:#fff}
+.preview .pv-note{color:#8b949e;margin:0 0 14px;line-height:1.45}
+.preview h2{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8b949e;margin:16px 0 6px}
+.pv-list{display:grid;gap:4px}
+.pv-btn{
+  text-align:left;background:#1f252b;border:1px solid #30363d;border-radius:8px;
+  padding:8px 10px;font:inherit;color:#c9d1d9;min-height:34px;
+}
+.pv-btn:hover{border-color:#58a6ff}
+.pv-btn[aria-pressed="true"]{background:#0f2b45;border-color:#58a6ff;color:#fff}
+.pv-btn small{color:#8b949e}
+.pv-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.pv-toggle{display:flex;align-items:center;gap:8px;padding:6px 2px;cursor:pointer}
+.pv-toggle input{accent-color:#58a6ff;width:16px;height:16px}
+.pv-close{display:none}
+.stage{
+  flex:1;min-width:0;position:relative;display:grid;place-items:center;overflow:auto;
+  background:radial-gradient(circle at 50% 40%,#1b2228,#0d1013 70%);
+}
+.device-holder{position:relative;flex:none}
+.device{
+  position:absolute;left:0;top:0;transform-origin:0 0;overflow:hidden;
+  background:var(--pf-bg-1);
+}
+.device.is-phone{border-radius:44px;box-shadow:0 0 0 10px #050607,0 0 0 11px #2a3036,0 40px 80px rgb(0 0 0 / .6)}
+.device.is-tablet{border-radius:28px;box-shadow:0 0 0 12px #050607,0 0 0 13px #2a3036,0 40px 80px rgb(0 0 0 / .6)}
+.device.is-desktop{border-radius:10px;box-shadow:0 0 0 1px #2a3036,0 40px 80px rgb(0 0 0 / .6)}
+.device.is-fill{position:fixed;inset:0;border-radius:0;transform:none!important;width:auto!important;height:auto!important}
+.pv-size{position:absolute;left:0;top:-26px;font:11px ui-monospace,Menlo,monospace;color:#8b949e;white-space:nowrap}
+.faux-status{
+  position:absolute;left:0;right:0;top:0;height:var(--safe-top);z-index:200;pointer-events:none;
+  display:flex;align-items:center;justify-content:space-between;padding:0 30px;
+  font:600 14px -apple-system,system-ui,sans-serif;color:#fff;
+}
+.faux-status i{width:120px;height:32px;border-radius:20px;background:#000;display:block}
+.faux-status.is-sm i{display:none}
+.faux-home{position:absolute;left:50%;bottom:8px;width:134px;height:5px;border-radius:3px;background:rgb(255 255 255 / .55);transform:translateX(-50%);z-index:200;pointer-events:none}
+.pv-tab{
+  display:none;position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:999;
+  writing-mode:vertical-rl;padding:14px 6px;min-width:30px;border:1px dashed #58a6ff;border-right:0;
+  border-radius:10px 0 0 10px;background:repeating-linear-gradient(135deg,#15191d 0 8px,#1c2228 8px 16px);
+  color:#c9d1d9;font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.12em;
+}
+@media (max-width:760px){
+  .preview{position:fixed;inset:0;width:auto;z-index:1000;display:none;border:0}
+  .preview.is-open{display:block}
+  .pv-close{display:block;position:absolute;right:12px;top:12px}
+  .pv-tab{display:block}
+  .pv-viewports{display:none}
+}
+
+/* =========================================================
+   4. APP SHELL
+   ========================================================= */
+.app{
+  position:absolute;inset:0;overflow-x:hidden;overflow-y:auto;
+  container:app / inline-size;
+  color:var(--pf-text);
+  background:
+    radial-gradient(120% 60% at 50% 0%,var(--pf-bg-glow) 0%,transparent 60%),
+    radial-gradient(90% 50% at 50% 110%,#07303a 0%,transparent 70%),
+    linear-gradient(180deg,var(--pf-bg-2) 0%,var(--pf-bg-1) 45%,var(--pf-bg-0) 100%);
+  overscroll-behavior:contain;
+}
+.screen{
+  position:relative;min-height:100%;display:flex;flex-direction:column;
+  padding:calc(var(--safe-top)) calc(var(--safe-right)) calc(var(--safe-bottom)) calc(var(--safe-left));
+}
+/* ambientní částice — jen pozadí, nikdy přes tekutiny */
+.motes{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.motes span{
+  position:absolute;bottom:-10px;width:var(--s,4px);height:var(--s,4px);border-radius:50%;
+  background:rgb(255 226 170 / .55);box-shadow:0 0 8px rgb(255 210 140 / .7);opacity:0;
+  animation:pf-mote var(--d,14s) linear var(--delay,0s) infinite;
+}
+@keyframes pf-mote{
+  0%{transform:translate(0,0);opacity:0}
+  10%{opacity:.5}
+  90%{opacity:.35}
+  100%{transform:translate(var(--dx,20px),-110vh);opacity:0}
+}
+.sigil{position:absolute;left:50%;top:50%;width:min(92%,560px);aspect-ratio:1;transform:translate(-50%,-50%);opacity:.07;pointer-events:none;color:var(--pf-chapter)}
+
+/* =========================================================
+   5. BUTTONS
+   ========================================================= */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  min-height:var(--pf-touch);padding:0 22px;border-radius:var(--pf-r-pill);
+  border:1px solid var(--pf-line);background:var(--pf-surface-2);
+  font-weight:var(--pf-fw-bold);font-size:var(--pf-fs-md);letter-spacing:.01em;
+  transition:transform var(--pf-dur-fast) var(--pf-ease-out),background var(--pf-dur-fast);
+}
+.btn:active{transform:translateY(2px)}
+.btn svg{width:22px;height:22px;flex:none}
+.btn-primary{
+  min-height:60px;padding:0 30px;border:0;color:var(--pf-gold-ink);
+  font-family:var(--pf-font-display);font-weight:var(--pf-fw-black);font-size:20px;
+  background:linear-gradient(180deg,#ffd58a 0%,var(--pf-gold) 40%,var(--pf-gold-deep) 100%);
+  box-shadow:0 5px 0 var(--pf-gold-shadow),0 12px 26px rgb(0 0 0 / .38),inset 0 2px 0 rgb(255 255 255 / .5);
+}
+.btn-primary:active{transform:translateY(4px);box-shadow:0 1px 0 var(--pf-gold-shadow),0 6px 14px rgb(0 0 0 / .3),inset 0 2px 0 rgb(255 255 255 / .5)}
+.btn-primary .sub{display:block;font-family:var(--pf-font-ui);font-size:12px;font-weight:700;opacity:.72;letter-spacing:.02em}
+.btn-block{width:100%}
+.icon-btn{
+  width:var(--pf-touch);height:var(--pf-touch);flex:none;display:grid;place-items:center;
+  border-radius:var(--pf-r-md);border:1px solid var(--pf-line);background:var(--pf-surface);
+}
+.icon-btn svg{width:24px;height:24px}
+.icon-btn:active{background:var(--pf-surface-2)}
+
+/* =========================================================
+   6. HOME
+   ========================================================= */
+.home{align-items:center;text-align:center}
+.home-top{width:100%;display:flex;justify-content:flex-end;padding:var(--pf-sp-2) var(--pf-gutter);position:relative;z-index:2}
+.home-hero{flex:1;min-height:300px;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 var(--pf-gutter);position:relative;z-index:1}
+.hero-bottles{display:flex;align-items:flex-end;justify-content:center;gap:6px;height:clamp(150px,30vh,230px);margin-bottom:18px;position:relative}
+.hero-bottles .bottle{pointer-events:none}
+.hero-bottles .b-main{--bw:clamp(64px,13vh,92px)}
+.hero-bottles .b-side{--bw:clamp(42px,8.5vh,60px)}
+.hero-bottles .b-side.l{transform:rotate(-10deg) translateY(4px)}
+.hero-bottles .b-side.r{transform:rotate(9deg) translateY(4px)}
+.hero-glow{position:absolute;left:50%;bottom:-8px;width:260px;height:60px;transform:translateX(-50%);background:radial-gradient(closest-side,rgb(255 196 107 / .30),transparent);pointer-events:none}
+.bubbles{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.bubbles span{position:absolute;bottom:4%;width:5px;height:5px;border-radius:50%;border:1px solid rgb(255 255 255 / .6);animation:pf-bubble 3.2s ease-in infinite;opacity:0}
+@keyframes pf-bubble{0%{transform:translateY(0);opacity:0}15%{opacity:.8}80%{opacity:.6}100%{transform:translateY(-140px);opacity:0}}
+.wordmark{margin:0;font-family:var(--pf-font-display);font-weight:900;line-height:.86;letter-spacing:.04em}
+.wordmark .w1{display:block;font-size:clamp(40px,11cqw,56px);color:#fff1d9;text-shadow:0 3px 0 rgb(0 0 0 / .25),0 0 28px rgb(255 200 120 / .25)}
+.wordmark .w2{display:block;font-size:clamp(46px,13cqw,66px);background:linear-gradient(90deg,var(--liq-B),var(--liq-V) 35%,var(--liq-P) 65%,var(--liq-O));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 3px 0 rgb(0 0 0 / .25))}
+.tagline{margin:12px 0 0;color:var(--pf-text-dim);font-size:var(--pf-fs-sm)}
+.home-actions{width:100%;max-width:400px;padding:var(--pf-sp-4) var(--pf-gutter) calc(var(--pf-sp-6));display:grid;gap:12px;position:relative;z-index:2}
+.resume-meta{display:flex;justify-content:center;gap:14px;color:var(--pf-text-dim);font-size:var(--pf-fs-xs);margin-top:4px}
+.resume-meta b{color:var(--pf-text);font-weight:700}
+
+/* =========================================================
+   7. LEVEL SELECT
+   ========================================================= */
+.levels-head{
+  position:sticky;top:0;z-index:5;display:grid;grid-template-columns:var(--pf-touch) 1fr var(--pf-touch);align-items:center;gap:8px;
+  padding:var(--pf-sp-2) var(--pf-gutter);
+  background:linear-gradient(180deg,var(--pf-bg-2) 70%,transparent);
+}
+.levels-head h1{margin:0;text-align:center;font-family:var(--pf-font-display);font-size:var(--pf-fs-xl);font-weight:900;letter-spacing:.02em}
+.star-total{display:flex;align-items:center;justify-content:center;gap:3px;font-weight:800;font-size:13px;color:var(--pf-star)}
+.star-total svg{width:16px;height:16px}
+.levels-body{width:100%;max-width:560px;margin:0 auto;padding:0 var(--pf-gutter) calc(var(--pf-sp-8));display:grid;gap:22px}
+.chapter{display:grid;gap:12px}
+.chapter-head{
+  position:relative;overflow:hidden;display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;
+  padding:12px 14px;border-radius:var(--pf-r-lg);
+  background:linear-gradient(100deg,color-mix(in srgb,var(--pf-chapter) 22%,transparent),transparent 70%),var(--pf-surface);
+  border:1px solid color-mix(in srgb,var(--pf-chapter) 35%,transparent);
+}
+.chapter-head .num{font-size:var(--pf-fs-2xs);letter-spacing:.16em;text-transform:uppercase;color:var(--pf-chapter);font-weight:800}
+.chapter-head h2{margin:2px 0 0;font-family:var(--pf-font-display);font-size:var(--pf-fs-lg);font-weight:850}
+.chapter-head .prog{text-align:right;font-size:var(--pf-fs-xs);color:var(--pf-text-dim);line-height:1.5}
+.chapter-head .prog b{color:var(--pf-text);font-size:var(--pf-fs-sm)}
+.chapter.is-locked .chapter-head{filter:saturate(.3);opacity:.75}
+.tiles{display:grid;grid-template-columns:repeat(5,minmax(48px,1fr));gap:10px}
+.tile{
+  position:relative;aspect-ratio:1/1.12;min-height:56px;border-radius:var(--pf-r-md);
+  border:1px solid var(--pf-line);background:var(--pf-surface);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 2px 6px;
+  font-family:var(--pf-font-display);font-weight:850;font-size:22px;line-height:1;
+}
+.tile .stars{display:flex;gap:1px}
+.tile .stars svg{width:12px;height:12px}
+.tile.is-done{background:linear-gradient(180deg,var(--pf-surface-3),var(--pf-surface));border-color:var(--pf-line-strong)}
+.tile.is-current{
+  border:2px solid var(--pf-gold);background:linear-gradient(180deg,rgb(255 196 107 / .22),rgb(255 196 107 / .06));
+  box-shadow:0 0 0 4px rgb(255 196 107 / .14),0 0 22px rgb(255 196 107 / .25);
+}
+.tile.is-current .play{font-family:var(--pf-font-ui);font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--pf-gold)}
+.tile.is-locked{color:var(--pf-text-faint);background:rgb(0 0 0 / .14);border-style:dashed}
+.tile.is-locked .lock{width:14px;height:14px;opacity:.7}
+.tile.is-collector{border-radius:var(--pf-r-md) var(--pf-r-md) var(--pf-r-md) var(--pf-r-md)}
+.tile.is-collector::before{
+  content:"";position:absolute;inset:3px;border-radius:12px;pointer-events:none;
+  border:1.5px solid color-mix(in srgb,var(--liq-O) 60%,transparent);
+}
+.tile .flask{position:absolute;top:-7px;right:-6px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--pf-bg-1);border:1.5px solid var(--liq-O);color:var(--liq-O)}
+.tile .flask svg{width:13px;height:13px}
+.tile.is-locked .flask{opacity:.6}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;color:var(--pf-text-dim);font-size:var(--pf-fs-xs);padding:2px 2px 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:14px;border-radius:5px;display:inline-block;border:1px solid var(--pf-line-strong);background:var(--pf-surface-3)}
+.legend i.cur{border:2px solid var(--pf-gold)}
+.legend i.lock{border-style:dashed;background:transparent}
+.legend i.col{border:1.5px solid var(--liq-O);border-radius:50%}
+
+/* =========================================================
+   8. GAME SCREEN
+   ========================================================= */
+.game{--cols:5;--rows:2;--col-gap:10px;--row-gap:30px}
+.hud{
+  position:relative;z-index:1;
+  display:grid;grid-template-columns:var(--pf-touch) 1fr var(--pf-touch);align-items:center;gap:8px;
+  padding:var(--pf-sp-2) var(--pf-gutter) 0;width:100%;max-width:640px;margin:0 auto;
+}
+.hud-title{text-align:center;min-width:0}
+.hud-title .lvl{display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--pf-font-display);font-weight:900;font-size:var(--pf-fs-xl);line-height:1.05;white-space:nowrap}
+.mode-chip{
+  font-family:var(--pf-font-ui);font-size:var(--pf-fs-2xs);font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 8px;border-radius:var(--pf-r-pill);background:var(--pf-surface-2);color:var(--pf-text-dim);border:1px solid var(--pf-line);
+}
+.mode-chip.is-collector{color:var(--liq-O);border-color:color-mix(in srgb,var(--liq-O) 50%,transparent);background:color-mix(in srgb,var(--liq-O) 12%,transparent)}
+.hud-title .chap{font-size:var(--pf-fs-xs);color:var(--pf-text-faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud-stats{
+  position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:8px;
+  width:100%;max-width:640px;margin:8px auto 0;padding:0 var(--pf-gutter);
+  font-size:var(--pf-fs-sm);color:var(--pf-text-dim);
+}
+.hud-stats .moves{display:flex;align-items:baseline;gap:6px}
+.hud-stats .moves b{font-family:var(--pf-font-display);font-size:var(--pf-fs-lg);color:var(--pf-text);font-weight:900;min-width:2ch}
+.hud-stats .par{display:flex;align-items:center;gap:4px}
+.hud-stats .par svg{width:13px;height:13px;color:var(--pf-star)}
+
+.play-area{flex:1;display:flex;flex-direction:column;width:100%;max-width:640px;margin:0 auto;position:relative;z-index:5}
+.board-wrap{flex:1;position:relative;display:flex;min-height:calc(var(--rows) * 168px + 24px);padding:12px var(--pf-gutter) 6px}
+.board{
+  flex:1;container-type:size;display:grid;
+  grid-template-columns:repeat(var(--cols),auto);
+  align-content:center;justify-content:center;column-gap:var(--col-gap);row-gap:var(--row-gap);
+  padding-top:14px;
+}
+
+/* ---------- Bottle ---------- */
+.bottle{
+  --bw:min(
+    calc((100cqw - (var(--cols) - 1) * var(--col-gap)) / var(--cols)),
+    calc(((100cqh - 14px - (var(--rows) - 1) * var(--row-gap)) / var(--rows) - 12px) * .3556),
+    80px);
+  position:relative;width:max(var(--bw),var(--pf-touch));
+  padding:0 0 12px;border:0;background:none;display:flex;justify-content:center;
+  touch-action:manipulation;
+}
+.bottle-body{
+  position:relative;display:block;width:var(--bw);aspect-ratio:64/180;
+  transform-origin:50% 3%;
+  transition:transform var(--pf-dur-select) var(--pf-ease-out),filter var(--pf-dur-select);
+  will-change:transform;
+}
+.bottle-body > svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.liquid{
+  position:absolute;left:10.94%;width:78.125%;top:29.444%;height:66.667%;
+  display:flex;flex-direction:column-reverse;overflow:hidden;
+  border-radius:0 0 26% 26% / 0 0 10.8% 10.8%;
+}
+.pad{
+  position:absolute;left:50%;bottom:2px;width:calc(var(--bw) * .95);height:12px;transform:translateX(-50%);
+  border-radius:50%;background:radial-gradient(closest-side,rgb(0 0 0 / .38),transparent);
+  transition:opacity var(--pf-dur-select),background var(--pf-dur-select);pointer-events:none;
+}
+.bottle.is-selected .bottle-body{
+  transform:translateY(-9%);
+  filter:drop-shadow(0 10px 10px rgb(0 0 0 / .35)) drop-shadow(0 0 10px rgb(255 224 150 / .45));
+}
+.bottle.is-selected .pad{opacity:.55}
+.bottle.is-target .pad{background:radial-gradient(closest-side,rgb(159 240 214 / .95),rgb(159 240 214 / .25) 60%,transparent);animation:pf-breathe 1.2s ease-in-out infinite}
+.bottle.is-target .bottle-body{filter:drop-shadow(0 0 7px rgb(159 240 214 / .55))}
+@keyframes pf-breathe{50%{opacity:.6}}
+.bottle.is-invalid .bottle-body{animation:pf-shake var(--pf-dur-shake) var(--pf-ease-in-out)}
+@keyframes pf-shake{20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+.bottle.is-hint-from .bottle-body,.bottle.is-hint-to .bottle-body{filter:drop-shadow(0 0 9px rgb(255 224 138 / .85))}
+.bottle.is-hint-from .pad,.bottle.is-hint-to .pad{background:radial-gradient(closest-side,rgb(255 224 138 / .95),transparent);animation:pf-breathe 1s ease-in-out infinite}
+.bottle.is-pouring{z-index:60}
+.bottle.is-flash .bottle-body{filter:drop-shadow(0 0 8px rgb(255 255 255 / .55))}
+.bottle.is-done .pad{background:radial-gradient(closest-side,color-mix(in srgb,var(--done-c) 55%,transparent),transparent)}
+.badge{
+  position:absolute;left:50%;top:-12px;transform:translateX(-50%);z-index:3;
+  min-width:24px;height:24px;padding:0 6px;border-radius:12px;display:grid;place-items:center;
+  font:800 13px/1 var(--pf-font-ui);pointer-events:none;
+}
+.badge.x{background:var(--pf-danger);color:#3a0d05;animation:pf-pop 900ms var(--pf-ease-out) forwards}
+.badge.n{background:var(--pf-hint);color:#3a2a00;box-shadow:0 2px 8px rgb(0 0 0 / .3)}
+@keyframes pf-pop{0%{transform:translate(-50%,6px) scale(.6);opacity:0}15%{transform:translate(-50%,0) scale(1);opacity:1}75%{opacity:1}100%{opacity:0}}
+
+/* cork (jen při výhře) */
+.cork{opacity:0;transform:translateY(-34%);transition:none}
+.is-corked .cork{opacity:1;transform:none;transition:transform 260ms var(--pf-ease-spring),opacity 120ms}
+
+/* ---------- LiquidLayer ---------- */
+.seg{
+  position:relative;flex:none;display:flex;flex-direction:column-reverse;
+  background:
+    linear-gradient(90deg,rgb(0 0 0 / .16) 0%,rgb(255 255 255 / .13) 16%,rgb(255 255 255 / 0) 38%,rgb(0 0 0 / 0) 74%,rgb(0 0 0 / .15) 100%),
+    var(--c);
+}
+.seg:last-child::before{
+  content:"";position:absolute;left:0;right:0;top:-3px;height:7px;border-radius:50%;
+  background:color-mix(in srgb,var(--c) 62%,white);opacity:.9;
+}
+.unit{flex:1 1 0;min-height:0;display:grid;place-items:center}
+.unit svg{width:44%;max-width:22px;aspect-ratio:1;color:var(--liq-symbol);display:none}
+[data-symbols="true"] .unit svg,[data-symbols="true"] .sym-inline{display:block}
+
+/* ---------- Collector ---------- */
+.collector{
+  --fill:0;--cc:var(--liq-O);
+  position:relative;border:0;padding:0;background:none;text-align:left;touch-action:manipulation;
+}
+.collector.compact{
+  display:grid;grid-template-columns:auto 1fr;align-items:center;gap:12px;
+  margin:10px var(--pf-gutter) 0;min-height:64px;padding:8px 12px 8px 10px;border-radius:var(--pf-r-lg);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--cc) 14%,transparent),transparent 55%),var(--pf-surface);
+  border:1px solid color-mix(in srgb,var(--cc) 40%,transparent);
+  transition:box-shadow var(--pf-dur-select),border-color var(--pf-dur-select);
+}
+.col-label{display:flex;align-items:center;gap:10px}
+.col-drop{width:34px;height:34px;flex:none;position:relative;color:var(--cc)}
+.col-drop svg{width:100%;height:100%}
+.col-drop .sym-inline{position:absolute;left:50%;top:58%;width:13px;height:13px;transform:translate(-50%,-50%);color:var(--liq-symbol);display:none}
+.col-text{line-height:1.15}
+.col-text small{display:block;font-size:var(--pf-fs-2xs);letter-spacing:.12em;text-transform:uppercase;color:var(--pf-text-dim);font-weight:800}
+.col-text b{font-family:var(--pf-font-display);font-size:var(--pf-fs-lg);font-weight:900;white-space:nowrap}
+.col-text b span{color:var(--pf-text-faint)}
+.tube{
+  position:relative;height:38px;border-radius:19px;overflow:hidden;
+  background:linear-gradient(180deg,rgb(190 240 240 / .14),rgb(190 240 240 / .04) 45%,rgb(190 240 240 / .10));
+  box-shadow:inset 0 0 0 1.5px var(--glass-stroke),inset 0 -6px 10px rgb(0 0 0 / .18);
+}
+.tube-liquid{
+  position:absolute;left:0;top:0;bottom:0;width:calc(var(--fill) * 100%);
+  background:linear-gradient(180deg,rgb(255 255 255 / .22),rgb(255 255 255 / 0) 35%,rgb(0 0 0 / 0) 70%,rgb(0 0 0 / .16)),var(--cc);
+  transition:width var(--pf-dur-pour) linear;
+}
+.tube-liquid::after{content:"";position:absolute;right:-3px;top:0;bottom:0;width:7px;border-radius:50%;background:color-mix(in srgb,var(--cc) 62%,white);opacity:.85}
+.collector[style*="--fill:0;"] .tube-liquid::after{display:none}
+.tube-ticks{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(12.5% - 1px),rgb(255 255 255 / .32) calc(12.5% - 1px) 12.5%);mask:linear-gradient(180deg,transparent 0 62%,#000 62% 100%);-webkit-mask:linear-gradient(180deg,transparent 0 62%,#000 62% 100%);pointer-events:none}
+.tube-ticks::after{content:"";position:absolute;left:14px;right:14px;top:5px;height:4px;border-radius:2px;background:rgb(255 255 255 / .35)}
+.collector.is-target.compact{border-color:var(--pf-target);box-shadow:0 0 0 3px rgb(159 240 214 / .25),0 0 18px rgb(159 240 214 / .35)}
+.collector.is-hint-to.compact{border-color:var(--pf-hint);box-shadow:0 0 0 3px rgb(255 224 138 / .3)}
+.collector.is-invalid .tube,.collector.is-invalid .tall-body{animation:pf-shake var(--pf-dur-shake) var(--pf-ease-in-out)}
+.collector.is-full .col-text b{color:var(--cc)}
+.collector.tall{display:none}
+
+/* ---------- Coach (tutorial) ---------- */
+.fx{position:absolute;inset:0;pointer-events:none;z-index:70;overflow:hidden}
+.coach{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;transition:left 240ms var(--pf-ease-out),top 240ms var(--pf-ease-out)}
+.coach-bubble{
+  max-width:210px;padding:10px 14px;border-radius:16px;text-align:center;
+  background:#fff6e4;color:#2b1d08;font-weight:800;font-size:var(--pf-fs-sm);line-height:1.25;
+  box-shadow:0 10px 24px rgb(0 0 0 / .35);
+}
+.coach-bubble small{display:block;font-weight:600;color:#6b5330;font-size:12px;margin-top:2px}
+.coach-arrow{width:14px;height:14px;background:#fff6e4;transform:rotate(45deg);margin-top:-8px}
+.tap-ring{position:absolute;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:3px solid #fff6e4;animation:pf-tap 1.3s ease-out infinite}
+@keyframes pf-tap{0%{transform:scale(.5);opacity:1}100%{transform:scale(1.5);opacity:0}}
+.hint-arrow{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.hint-arrow path{fill:none;stroke:var(--pf-hint);stroke-width:3;stroke-linecap:round;stroke-dasharray:2 8;animation:pf-dash 600ms linear infinite}
+@keyframes pf-dash{to{stroke-dashoffset:-10}}
+
+/* stream */
+.stream{
+  position:absolute;width:6px;margin-left:-3px;border-radius:3px;transform-origin:50% 0;transform:scaleY(0);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--c) 80%,black),color-mix(in srgb,var(--c) 70%,white) 45%,var(--c));
+}
+.spark{position:absolute;width:8px;height:8px;margin:-4px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c);animation:pf-spark 900ms var(--pf-ease-out) forwards}
+@keyframes pf-spark{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+
+/* ---------- ActionBar ---------- */
+.actionbar{
+  position:relative;z-index:6;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+  width:100%;max-width:480px;margin:0 auto;padding:6px var(--pf-gutter) max(12px,calc(var(--safe-bottom) * 0 + 12px));
+}
+.act{
+  min-height:var(--pf-action-h);border-radius:var(--pf-r-lg);border:1px solid var(--pf-line);
+  background:linear-gradient(180deg,var(--pf-surface-2),var(--pf-surface));
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font-size:13px;font-weight:var(--pf-fw-bold);color:var(--pf-text);
+  box-shadow:0 3px 0 rgb(0 0 0 / .25);
+  transition:transform var(--pf-dur-fast),opacity var(--pf-dur-fast);
+}
+.act svg{width:24px;height:24px}
+.act:active{transform:translateY(2px);box-shadow:0 1px 0 rgb(0 0 0 / .25)}
+.act:disabled{opacity:.38;box-shadow:none}
+.act.hint{color:var(--pf-hint);border-color:rgb(255 224 138 / .35);background:linear-gradient(180deg,rgb(255 224 138 / .16),rgb(255 224 138 / .05))}
+
+/* ---------- Toast ---------- */
+.toast{
+  position:absolute;left:50%;bottom:calc(var(--pf-action-h) + 30px + var(--safe-bottom));z-index:80;transform:translate(-50%,10px);
+  max-width:min(340px,calc(100% - 32px));width:max-content;padding:10px 16px;border-radius:14px;
+  background:rgb(8 28 32 / .94);border:1px solid var(--pf-line-strong);color:var(--pf-text);
+  font-size:var(--pf-fs-sm);font-weight:600;line-height:1.35;text-align:center;
+  box-shadow:0 10px 30px rgb(0 0 0 / .4);opacity:0;pointer-events:none;
+  transition:opacity 160ms,transform 160ms var(--pf-ease-out);
+}
+.toast.is-on{opacity:1;transform:translate(-50%,0)}
+.toast.warn{border-color:rgb(255 154 133 / .5)}
+.toast.hint{border-color:rgb(255 224 138 / .55)}
+
+/* =========================================================
+   9. DIALOGS (WinDialog, NoMoves, Settings)
+   ========================================================= */
+.scrim{position:absolute;inset:0;z-index:100;background:var(--pf-scrim);display:flex;align-items:flex-end;justify-content:center;animation:pf-fade var(--pf-dur-dialog) ease-out;padding:0 0 0 0}
+@keyframes pf-fade{from{opacity:0}}
+.sheet{
+  position:relative;width:100%;max-width:480px;max-height:calc(100% - 24px);overflow-y:auto;
+  border-radius:var(--pf-r-xl) var(--pf-r-xl) 0 0;
+  background:linear-gradient(180deg,#14454d,#0c2c33);
+  border:1px solid var(--pf-line-strong);border-bottom:0;
+  padding:22px var(--pf-gutter) calc(20px + var(--safe-bottom));
+  box-shadow:0 -20px 60px rgb(0 0 0 / .45);
+  animation:pf-rise var(--pf-dur-dialog) var(--pf-ease-out);
+}
+@keyframes pf-rise{from{transform:translateY(40px);opacity:.4}}
+.sheet h2{margin:0;font-family:var(--pf-font-display);font-size:var(--pf-fs-xl);font-weight:900;text-align:center}
+.sheet p{color:var(--pf-text-dim);text-align:center;margin:8px auto 0;max-width:34ch;line-height:1.45;font-size:var(--pf-fs-sm)}
+.sheet-close{position:absolute;right:12px;top:12px}
+.win .eyebrow{text-align:center;font-size:var(--pf-fs-xs);letter-spacing:.16em;text-transform:uppercase;color:var(--pf-chapter);font-weight:800}
+.win-stars{display:flex;justify-content:center;align-items:flex-end;gap:6px;margin:14px 0 10px}
+.win-stars svg{width:54px;height:54px;color:var(--pf-star-off);filter:drop-shadow(0 4px 0 rgb(0 0 0 / .25))}
+.win-stars svg:nth-child(2){width:68px;height:68px;margin-bottom:8px}
+.win-stars svg.on{color:var(--pf-star);animation:pf-star 420ms var(--pf-ease-spring) both}
+.win-stars svg.on:nth-child(2){animation-delay:140ms}
+.win-stars svg.on:nth-child(3){animation-delay:280ms}
+@keyframes pf-star{from{transform:scale(0) rotate(-30deg)}}
+.win-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 18px}
+.stat{border-radius:var(--pf-r-md);background:var(--pf-surface);border:1px solid var(--pf-line);padding:10px;text-align:center}
+.stat small{display:block;font-size:var(--pf-fs-xs);color:var(--pf-text-dim)}
+.stat b{font-family:var(--pf-font-display);font-size:var(--pf-fs-xl);font-weight:900}
+.stat.best b{color:var(--pf-star)}
+.sheet-actions{display:grid;gap:10px}
+.sheet-actions .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.nomoves-icon{width:64px;height:64px;margin:0 auto 10px;border-radius:50%;display:grid;place-items:center;background:var(--pf-surface-2);border:1px solid var(--pf-line);color:var(--pf-danger)}
+.nomoves-icon svg{width:32px;height:32px}
+.campaign-crest{display:flex;justify-content:center;gap:4px;margin:6px 0 4px}
+.campaign-crest .bottle{--bw:30px;pointer-events:none}
+
+/* settings */
+.set-list{display:grid;gap:10px;margin-top:18px}
+.set-row{
+  display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:12px;min-height:64px;
+  padding:10px 12px;border-radius:var(--pf-r-md);background:var(--pf-surface);border:1px solid var(--pf-line);text-align:left;width:100%;
+}
+.set-row .ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--pf-surface-2)}
+.set-row .ic svg{width:22px;height:22px}
+.set-row b{display:block;font-size:var(--pf-fs-md)}
+.set-row small{display:block;color:var(--pf-text-dim);font-size:var(--pf-fs-xs);margin-top:2px;line-height:1.35}
+.switch{width:52px;height:32px;border-radius:16px;background:rgb(0 0 0 / .3);border:1px solid var(--pf-line-strong);position:relative;transition:background var(--pf-dur-fast)}
+.switch::after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;background:#cfe3df;transition:transform var(--pf-dur-select) var(--pf-ease-out)}
+[aria-checked="true"] .switch{background:var(--pf-gold-deep);border-color:var(--pf-gold)}
+[aria-checked="true"] .switch::after{transform:translateX(20px);background:#fff}
+.swatches{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:12px}
+.swatch{aspect-ratio:1;border-radius:10px;display:grid;place-items:center;background:var(--c);box-shadow:inset 0 -3px 0 rgb(0 0 0 / .18)}
+.swatch svg{width:58%;color:var(--liq-symbol)}
+.set-foot{margin-top:14px;font-size:var(--pf-fs-xs);color:var(--pf-text-faint);text-align:center}
+
+/* =========================================================
+   10. REDUCED MOTION — stav zůstává čitelný, bez letu a částic
+   ========================================================= */
+[data-reduced="true"] .motes,[data-reduced="true"] .bubbles{display:none}
+[data-reduced="true"] *,[data-reduced="true"] *::before,[data-reduced="true"] *::after{animation-duration:1ms!important;animation-iteration-count:1!important}
+[data-reduced="true"] .bottle.is-target .pad,[data-reduced="true"] .bottle.is-hint-from .pad,[data-reduced="true"] .bottle.is-hint-to .pad{animation:none!important}
+[data-reduced="true"] .badge.x{animation:none!important}
+[data-reduced="true"] .tap-ring{animation:none!important;opacity:.8;transform:scale(1)}
+[data-reduced="true"] .hint-arrow path{animation:none!important;stroke-dasharray:none}
+
+/* =========================================================
+   11. RESPONSIVE (container queries — reagují na velikost hry, ne okna)
+   ========================================================= */
+@container app (max-width:359px){
+  .game{--col-gap:6px}
+  .tiles{gap:7px}
+  .act{font-size:12px}
+}
+@container app (min-width:600px){
+  .game{--col-gap:16px;--row-gap:36px}
+  .bottle{--bw:min(
+    calc((100cqw - (var(--cols) - 1) * var(--col-gap)) / var(--cols)),
+    calc(((100cqh - 14px - (var(--rows) - 1) * var(--row-gap)) / var(--rows) - 12px) * .3556),
+    92px)}
+  .scrim{align-items:center}
+  .sheet{border-radius:var(--pf-r-xl);border-bottom:1px solid var(--pf-line-strong);max-width:420px;padding-bottom:22px}
+}
+@container app (min-width:960px){
+  .game .stage-row{display:grid;grid-template-columns:200px minmax(0,640px);justify-content:center;gap:24px;flex:1;width:100%;max-width:1000px;margin:0 auto}
+  .game.has-collector .play-area{margin:0}
+  .game.has-collector .collector.compact{display:none}
+  .game.has-collector .collector.tall{display:flex}
+  .levels-body{max-width:640px}
+  .hud,.hud-stats{max-width:880px}
+}
+.stage-row{display:flex;flex-direction:column;flex:1;width:100%}
+/* tall collector (desktop) */
+.collector.tall{
+  flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px 0 24px;align-self:stretch;
+}
+.tall-body{position:relative;width:140px;aspect-ratio:100/260;max-height:calc(100% - 70px)}
+.tall-body > svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.tall-liquid{
+  position:absolute;left:9%;width:82%;top:23.846%;height:71.154%;overflow:hidden;
+  border-radius:0 0 23% 23% / 0 0 10.3% 10.3%;display:flex;flex-direction:column-reverse;
+}
+.tall-fill{
+  flex:none;height:calc(var(--fill) * 100%);position:relative;
+  background:linear-gradient(90deg,rgb(0 0 0 / .16),rgb(255 255 255 / .13) 16%,rgb(255 255 255 / 0) 38%,rgb(0 0 0 / 0) 74%,rgb(0 0 0 / .15)),var(--cc);
+  transition:height var(--pf-dur-pour) linear;
+}
+.tall-fill::before{content:"";position:absolute;left:0;right:0;top:-4px;height:9px;border-radius:50%;background:color-mix(in srgb,var(--cc) 62%,white)}
+.collector[style*="--fill:0;"] .tall-fill::before{display:none}
+.tall-units{position:absolute;inset:0;display:flex;flex-direction:column-reverse}
+.tall-units span{flex:1;display:grid;place-items:center}
+.tall-units svg{width:18px;height:18px;color:var(--liq-symbol);display:none}
+[data-symbols="true"] .tall-units svg.on{display:block}
+.collector.tall .col-label{flex-direction:column;text-align:center;gap:6px}
+.collector.tall.is-target .tall-body{filter:drop-shadow(0 0 10px rgb(159 240 214 / .7))}
+.collector.tall.is-hint-to .tall-body{filter:drop-shadow(0 0 10px rgb(255 224 138 / .8))}
+
+/* =========================================================
+   12. SPEC SHEET (tokeny) & ANNOTATION — jen prototyp
+   ========================================================= */
+.annotate [data-component]{outline:1.5px dashed #ff4fd8!important;outline-offset:2px}
+.annotate [data-component]::after{
+  content:attr(data-component);position:absolute;left:0;top:-15px;z-index:300;
+  font:600 9px/13px ui-monospace,Menlo,monospace;color:#fff;background:#c2189f;padding:0 4px;border-radius:3px;white-space:nowrap;pointer-events:none;
+}
+.annotate .seg::after{top:auto;bottom:0;left:auto;right:0;transform:translateX(100%)}
+.annotate .bottle:not(:first-child) .seg::after,.annotate .seg:not(:first-child)::after{display:none}
+.annotate .bottle,.annotate .hud,.annotate .actionbar,.annotate .tile,.annotate .sheet{position:relative}
+
+.spec{width:min(980px,100%);height:100%;overflow:auto;padding:28px;font-family:var(--pf-font-ui);color:#d9e4e8}
+.spec h1{font:700 22px var(--pf-font-ui);margin:0 0 4px}
+.spec h2{font:700 13px ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:#8b949e;margin:28px 0 10px}
+.spec p{color:#9aa7b0;margin:0 0 10px;font-size:14px;line-height:1.5}
+.spec .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.spec .tok{border:1px solid #30363d;border-radius:10px;padding:10px;background:#161b20;font:12px ui-monospace,Menlo,monospace}
+.spec .tok i{display:block;height:44px;border-radius:7px;margin-bottom:8px;position:relative}
+.spec .tok i svg{position:absolute;left:50%;top:50%;width:22px;height:22px;transform:translate(-50%,-50%);color:var(--liq-symbol)}
+.spec .tok b{display:block;font-family:var(--pf-font-ui);font-size:13px;color:#fff}
+.spec table{width:100%;border-collapse:collapse;font-size:13px}
+.spec td,.spec th{border-bottom:1px solid #2a3036;padding:8px 6px;text-align:left;vertical-align:top}
+.spec th{color:#8b949e;font-weight:600}
+.spec code{font:12px ui-monospace,Menlo,monospace;color:#ffb3f0}
+</style>
+</head>
+<body>
+
+<!-- =========================================================
+     SVG DEFS — sdílené tvary, gradienty a symboly (jedinečná ID s prefixem pf-)
+     ========================================================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="pf-glass-fill" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#bef0f0" stop-opacity=".20"/>
+      <stop offset=".22" stop-color="#bef0f0" stop-opacity=".06"/>
+      <stop offset=".7" stop-color="#bef0f0" stop-opacity=".03"/>
+      <stop offset="1" stop-color="#bef0f0" stop-opacity=".16"/>
+    </linearGradient>
+    <linearGradient id="pf-hl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".6"/>
+      <stop offset=".6" stop-color="#fff" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#fff" stop-opacity=".02"/>
+    </linearGradient>
+    <linearGradient id="pf-cork" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8a5a2e"/><stop offset=".35" stop-color="#d49a5f"/><stop offset="1" stop-color="#7b4f27"/>
+    </linearGradient>
+    <linearGradient id="pf-star-g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff0a8"/><stop offset="1" stop-color="#ffb52e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Bottle geometry: viewBox 0 0 64 180, vnitřek pro kapalinu x 7–57, y 53–173 (4 × 30) -->
+  <symbol id="pf-glass-back" viewBox="0 0 64 180">
+    <path d="M21 14V30C21 38 4 38 4 50V160Q4 176 20 176H44Q60 176 60 160V50C60 38 43 38 43 30V14Z" fill="url(#pf-glass-fill)"/>
+    <ellipse cx="32" cy="172" rx="24" ry="3.5" fill="#000" opacity=".18"/>
+  </symbol>
+  <symbol id="pf-glass-front" viewBox="0 0 64 180">
+    <path d="M21 14V30C21 38 4 38 4 50V160Q4 176 20 176H44Q60 176 60 160V50C60 38 43 38 43 30V14Z" fill="none" stroke="var(--glass-stroke)" stroke-width="1.6"/>
+    <rect x="17" y="5" width="30" height="9" rx="4.5" fill="#d7faf8" fill-opacity=".16" stroke="var(--glass-stroke)" stroke-width="1.6"/>
+    <rect x="9" y="58" width="4.2" height="98" rx="2.1" fill="url(#pf-hl)"/>
+    <path d="M11 50C11 45 16 41 22 39" fill="none" stroke="#fff" stroke-opacity=".38" stroke-width="2.2" stroke-linecap="round"/>
+    <rect x="24" y="16" width="2.6" height="13" rx="1.3" fill="#fff" fill-opacity=".3"/>
+    <rect x="51.5" y="64" width="2.4" height="34" rx="1.2" fill="#fff" fill-opacity=".16"/>
+    <g stroke="#fff" stroke-opacity=".32" stroke-width="1.3" stroke-linecap="round">
+      <line x1="50" y1="83" x2="55" y2="83"/><line x1="50" y1="113" x2="55" y2="113"/><line x1="50" y1="143" x2="55" y2="143"/>
+    </g>
+  </symbol>
+  <symbol id="pf-cork" viewBox="0 0 64 180">
+    <rect x="19.5" y="-4" width="25" height="18" rx="3.5" fill="url(#pf-cork)"/>
+    <ellipse cx="32" cy="-4" rx="12.5" ry="3" fill="#e2b07c"/>
+    <g fill="#5e3b1a" opacity=".45"><circle cx="26" cy="4" r="1"/><circle cx="36" cy="8" r="1.1"/><circle cx="31" cy="11" r=".8"/></g>
+  </symbol>
+
+  <!-- Collector (tall) geometry: viewBox 0 0 100 260, vnitřek x 9–91, y 62–247 (8 × 23.125) -->
+  <symbol id="pf-col-back" viewBox="0 0 100 260">
+    <path d="M34 14V34C34 46 6 46 6 60V228Q6 250 28 250H72Q94 250 94 228V60C94 46 66 46 66 34V14Z" fill="url(#pf-glass-fill)"/>
+  </symbol>
+  <symbol id="pf-col-front" viewBox="0 0 100 260">
+    <path d="M34 14V34C34 46 6 46 6 60V228Q6 250 28 250H72Q94 250 94 228V60C94 46 66 46 66 34V14Z" fill="none" stroke="var(--glass-stroke)" stroke-width="1.8"/>
+    <rect x="30" y="4" width="40" height="11" rx="5.5" fill="#d7faf8" fill-opacity=".16" stroke="var(--glass-stroke)" stroke-width="1.8"/>
+    <rect x="12" y="68" width="5" height="150" rx="2.5" fill="url(#pf-hl)"/>
+    <path d="M14 58C14 52 22 47 31 45" fill="none" stroke="#fff" stroke-opacity=".38" stroke-width="2.6" stroke-linecap="round"/>
+    <g stroke="#fff" stroke-opacity=".34" stroke-width="1.4" stroke-linecap="round">
+      <line x1="80" y1="223.9" x2="88" y2="223.9"/><line x1="80" y1="200.75" x2="88" y2="200.75"/>
+      <line x1="80" y1="177.6" x2="88" y2="177.6"/><line x1="74" y1="154.5" x2="88" y2="154.5" stroke-opacity=".55"/>
+      <line x1="80" y1="131.4" x2="88" y2="131.4"/><line x1="80" y1="108.25" x2="88" y2="108.25"/>
+      <line x1="80" y1="85.1" x2="88" y2="85.1"/>
+    </g>
+  </symbol>
+  <symbol id="pf-col-cork" viewBox="0 0 100 260">
+    <rect x="32" y="-6" width="36" height="22" rx="4" fill="url(#pf-cork)"/>
+    <ellipse cx="50" cy="-6" rx="18" ry="3.6" fill="#e2b07c"/>
+  </symbol>
+
+  <!-- Color symbols (viewBox 0 0 20 20) -->
+  <symbol id="pf-sym-R" viewBox="0 0 20 20"><circle cx="10" cy="10" r="5.6" fill="currentColor"/></symbol>
+  <symbol id="pf-sym-O" viewBox="0 0 20 20"><path d="M10 3.4 16.8 15.6H3.2Z" fill="currentColor" stroke="currentColor" stroke-linejoin="round" stroke-width="1.2"/></symbol>
+  <symbol id="pf-sym-Y" viewBox="0 0 20 20"><path d="m10 2.6 2.2 4.7 5.1.6-3.8 3.5 1 5.1L10 14l-4.5 2.5 1-5.1-3.8-3.5 5.1-.6z" fill="currentColor"/></symbol>
+  <symbol id="pf-sym-G" viewBox="0 0 20 20"><path d="M10 2.6 17.4 10 10 17.4 2.6 10z" fill="currentColor"/></symbol>
+  <symbol id="pf-sym-B" viewBox="0 0 20 20"><rect x="4.4" y="4.4" width="11.2" height="11.2" rx="1.6" fill="currentColor"/></symbol>
+  <symbol id="pf-sym-V" viewBox="0 0 20 20"><path d="M7.9 3.4h4.2v4.5h4.5v4.2h-4.5v4.5H7.9v-4.5H3.4V7.9h4.5z" fill="currentColor"/></symbol>
+  <symbol id="pf-sym-P" viewBox="0 0 20 20"><path d="M10 16.6S3.4 12.6 3.4 8.1A3.4 3.4 0 0 1 10 6.3a3.4 3.4 0 0 1 6.6 1.8c0 4.5-6.6 8.5-6.6 8.5z" fill="currentColor"/></symbol>
+  <symbol id="pf-sym-W" viewBox="0 0 20 20"><circle cx="10" cy="10" r="5" fill="none" stroke="currentColor" stroke-width="2.8"/></symbol>
+
+  <!-- UI icons (viewBox 0 0 24 24, stroke) -->
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/><circle cx="12" cy="12" r="6.6"/></g></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6 4.5 10.5 9 15"/><path d="M5 10.5h9a5.5 5.5 0 0 1 0 11h-3"/></g></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21.2h4"/><path d="M12 2.8a6.2 6.2 0 0 0-3.8 11.1c.7.6 1 1.3 1 2.1V16h5.6v-.1c0-.8.3-1.5 1-2.1A6.2 6.2 0 0 0 12 2.8z"/></g></symbol>
+  <symbol id="i-restart" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 3.5v5h-5"/></g></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></g></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2.6 2.8 6 6.5.7-4.9 4.4 1.4 6.5L12 16.9l-5.8 3.3 1.4-6.5-4.9-4.4 6.5-.7z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6L4.8 18.2A2 2 0 0 0 6.6 21h10.8a2 2 0 0 0 1.8-2.8L14 9V3"/><path d="M7.3 15h9.4" /></g></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="4" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2"/></g></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12.5 19V5L7.5 9.5z"/><path d="M16 9a4.2 4.2 0 0 1 0 6M18.6 6.4a8 8 0 0 1 0 11.2"/></g></symbol>
+  <symbol id="i-motion" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 8h9M3 12h13M3 16h7"/><circle cx="18.5" cy="8" r="2"/></g></symbol>
+  <symbol id="i-shapes" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><circle cx="7.5" cy="7.5" r="3.5"/><rect x="13" y="4" width="7" height="7" rx="1.4"/><path d="M7.5 13.5 11.5 20h-8z"/><path d="M16.5 13.2l3.6 3.6-3.6 3.6-3.6-3.6z"/></g></symbol>
+  <symbol id="i-stuck" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8 15.5c1-1.2 2.3-1.8 4-1.8s3 .6 4 1.8M9 9.5h.01M15 9.5h.01"/></g></symbol>
+  <symbol id="i-drop" viewBox="0 0 34 34"><path d="M17 3C17 3 6 15.5 6 22a11 11 0 0 0 22 0C28 15.5 17 3 17 3z" fill="currentColor"/><path d="M11.5 22.5a5.5 5.5 0 0 0 4 5" stroke="#fff" stroke-opacity=".55" stroke-width="2.2" fill="none" stroke-linecap="round"/></symbol>
+
+  <!-- Alchemický znak na pozadí plochy -->
+  <symbol id="pf-sigil" viewBox="0 0 200 200">
+    <g fill="none" stroke="currentColor" stroke-width="1">
+      <circle cx="100" cy="100" r="96"/><circle cx="100" cy="100" r="88" stroke-dasharray="2 5"/>
+      <circle cx="100" cy="100" r="60"/>
+      <path d="M100 12 176 144H24Z"/><path d="M100 188 24 56H176Z"/>
+      <circle cx="100" cy="100" r="22"/>
+      <path d="M100 4v16M100 180v16M4 100h16M180 100h16"/>
+    </g>
+  </symbol>
+</svg>
+
+<div class="proto">
+  <!-- ===================== NÁHLED (není součást hry) ===================== -->
+  <aside class="preview" id="preview" aria-label="Náhled prototypu">
+    <button class="pv-btn pv-close" data-pv-close>✕ Zavřít</button>
+    <h1>⚗ NÁHLED</h1>
+    <p class="pv-note">Pouze pro testování návrhu. Není součástí hry ani produkční navigace.</p>
+
+    <h2>Obrazovky</h2>
+    <div class="pv-list" data-pv-group="screen">
+      <button class="pv-btn" data-pv="home">1 · Úvod <small>(rozehráno)</small></button>
+      <button class="pv-btn" data-pv="home-first">1b · Úvod <small>(první spuštění)</small></button>
+      <button class="pv-btn" data-pv="levels">2 · Výběr levelů</button>
+      <button class="pv-btn" data-pv="classic">3 · Classic <small>L7</small></button>
+      <button class="pv-btn" data-pv="collector">4 · Sběr <small>L5</small></button>
+      <button class="pv-btn" data-pv="tutorial">5 · Tutorial <small>L1</small></button>
+      <button class="pv-btn" data-pv="max">Max. 10 baněk <small>L28</small></button>
+      <button class="pv-btn" data-pv="win">7 · Výhra</button>
+      <button class="pv-btn" data-pv="campaign">7b · Kampaň dokončena</button>
+      <button class="pv-btn" data-pv="settings">8 · Nastavení</button>
+    </div>
+
+    <h2>6 · Interakční stavy</h2>
+    <div class="pv-list">
+      <button class="pv-btn" data-pv="st-selected">Vybraný zdroj + vhodný cíl</button>
+      <button class="pv-btn" data-pv="st-invalid">Nepovolený tah</button>
+      <button class="pv-btn" data-pv="st-pour">Přelévání <small>(zpomaleno 4×)</small></button>
+      <button class="pv-btn" data-pv="st-hint">Nápověda</button>
+      <button class="pv-btn" data-pv="st-collector-hint">Sběr: vhodný cíl / odmítnutí</button>
+      <button class="pv-btn" data-pv="st-stuck">Bez legálních tahů</button>
+    </div>
+
+    <div class="pv-viewports">
+      <h2>Viewport</h2>
+      <div class="pv-grid" data-pv-group="vp">
+        <button class="pv-btn" data-vp="390x844">390×844</button>
+        <button class="pv-btn" data-vp="375x667">375×667</button>
+        <button class="pv-btn" data-vp="360x800">360×800</button>
+        <button class="pv-btn" data-vp="320x568">320×568</button>
+        <button class="pv-btn" data-vp="768x1024">Tablet</button>
+        <button class="pv-btn" data-vp="1440x900">Desktop</button>
+        <button class="pv-btn" data-vp="fill" style="grid-column:span 2">Celé okno</button>
+      </div>
+    </div>
+
+    <h2>Přepínače</h2>
+    <label class="pv-toggle"><input type="checkbox" data-pv-set="reduced"> Omezené animace</label>
+    <label class="pv-toggle"><input type="checkbox" data-pv-set="symbols"> Symboly barev</label>
+    <label class="pv-toggle"><input type="checkbox" data-pv-set="annotate"> Zobrazit komponenty</label>
+
+    <h2>Předloha</h2>
+    <div class="pv-list"><button class="pv-btn" data-pv="tokens">Tokeny &amp; komponenty</button></div>
+  </aside>
+  <button class="pv-tab" id="pvTab" aria-controls="preview">NÁHLED</button>
+
+  <!-- ===================== STAGE ===================== -->
+  <main class="stage" id="stage">
+    <div class="device-holder" id="holder">
+      <div class="device" id="device">
+        <div class="app" id="app" data-chapter="1"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* =========================================================
+   POTION FLOW — prototypová logika (ne produkční engine, ne solver)
+   Pole baněk jsou ODSPODU NAHORU; poslední položka = vrchní jednotka.
+   ========================================================= */
+const CAP = 4, CCAP = 8;
+const COLORS = {
+  R:{name:'Rubín',   gen:'rubín',    sym:'kruh'},
+  O:{name:'Jantar',  gen:'jantar',   sym:'trojúhelník'},
+  Y:{name:'Citrín',  gen:'citrín',   sym:'hvězda'},
+  G:{name:'Smaragd', gen:'smaragd',  sym:'kosočtverec'},
+  B:{name:'Azurit',  gen:'azurit',   sym:'čtverec'},
+  V:{name:'Ametyst', gen:'ametyst',  sym:'kříž'},
+  P:{name:'Růženín', gen:'růženín',  sym:'srdce'},
+  W:{name:'Perla',   gen:'perlu',    sym:'prsten'},
+};
+const CHAPTERS = [
+  {n:1, roman:'I',   name:'Učňovská dílna'},
+  {n:2, roman:'II',  name:'Měsíční laboratoř'},
+  {n:3, roman:'III', name:'Hvězdná destilerie'},
+];
+/* Demonstrační levely — řešení ověřena BFS/best-first solverem mimo prototyp. */
+const LEVELS = {
+  1:{id:1, chapter:1, mode:'classic', tutorial:true,
+     bottles:[['R','R','B','B'],['B','B','R','R'],[],[]],
+     solution:[[0,2],[1,0],[1,2]], par:3},
+  5:{id:5, chapter:1, mode:'collector', collector:{color:'O', capacity:8},
+     bottles:[['O','P','O','P'],['G','O','P','P'],['O','B','G','O'],['B','B','B','O'],['O','G','O','G'],[],[]],
+     solution:[[0,5],[0,'col'],[0,5],[0,'col'],[1,5],[1,'col'],[2,'col'],[2,1],[3,'col'],[2,3],[2,'col'],[4,1],[4,'col'],[4,1],[4,'col']], par:15},
+  7:{id:7, chapter:1, mode:'classic',
+     bottles:[['G','R','B','Y'],['B','Y','R','G'],['R','G','Y','B'],['Y','B','G','R'],[],[]],
+     solution:[[0,4],[0,5],[2,5],[2,4],[1,2],[0,1],[2,0],[1,2],[1,4],[1,5],[3,2],[3,0],[3,5],[3,4]], par:14},
+  28:{id:28, chapter:3, mode:'classic',
+     bottles:[['G','Y','G','O'],['B','W','B','W'],['V','V','R','V'],['O','G','R','R'],['B','W','P','P'],['W','O','O','P'],['Y','G','R','V'],['Y','P','Y','B'],[],[]],
+     solution:[[0,8],[2,9],[6,9],[2,6],[2,9],[3,2],[0,3],[6,2],[6,3],[0,6],[3,0],[3,8],[1,3],[7,1],[7,6],[4,7],[4,3],[1,4],[1,3],[1,4],[5,1],[5,8],[7,1],[3,5],[6,7]], par:25},
+};
+const DEMO_ORDER = [1,5,7,28];
+const PROGRESS_DEMO = {stars:{1:3,2:3,3:2,4:3,5:2,6:1}, best:{1:3,2:6,3:9,4:8,5:17,6:16}, current:7};
+/* náhled „Kampaň dokončena": všech 30 levelů hotovo */
+const PROGRESS_DONE = {stars:Object.fromEntries(Array.from({length:30},(_,k)=>[k+1,[3,3,2,3,2,1,3,2,3,2][k%10]])), best:{}, current:31};
+let PROGRESS = PROGRESS_DEMO;
+
+const S = {
+  screen:'home', firstRun:false, preview:'home',
+  level:null, board:null, col:0, history:[], selected:null,
+  busy:false, timers:[], hint:null, slow:1, loop:null,
+  settings:{sound:true, reduced:matchMedia('(prefers-reduced-motion: reduce)').matches, symbols:false},
+  viewport:'390x844', annotate:false, overlay:null,
+};
+
+/* ---------- pravidla (minimální, jen pro demonstraci) ---------- */
+const clone = b => b.map(x => x.slice());
+function topRun(b){ if(!b.length) return null; const c=b[b.length-1]; let n=0; for(let i=b.length-1;i>=0&&b[i]===c;i--) n++; return {c,n}; }
+function check(i,j,board=S.board,col=S.col){
+  if(i===j) return {ok:false,reason:'same'};
+  const r = topRun(board[i]); if(!r) return {ok:false,reason:'empty'};
+  if(j==='col'){
+    const L=S.level; if(!L.collector) return {ok:false,reason:'none'};
+    if(r.c!==L.collector.color) return {ok:false,reason:'col-color'};
+    const free=CCAP-col; if(!free) return {ok:false,reason:'full'};
+    return {ok:true,k:Math.min(r.n,free),c:r.c};
+  }
+  const t=board[j]; if(t.length>=CAP) return {ok:false,reason:'full'};
+  if(t.length && t[t.length-1]!==r.c) return {ok:false,reason:'color'};
+  return {ok:true,k:Math.min(r.n,CAP-t.length),c:r.c};
+}
+function applyMove(board,col,i,j){ const r=check(i,j,board,col); if(!r.ok) return null; const b=clone(board); b[i].splice(b[i].length-r.k,r.k); if(j==='col') col+=r.k; else for(let q=0;q<r.k;q++) b[j].push(r.c); return {b,col,k:r.k,c:r.c}; }
+function legalMoves(board=S.board,col=S.col){ const out=[]; board.forEach((_,i)=>{ board.forEach((_,j)=>{ if(check(i,j,board,col).ok) out.push([i,j]); }); if(S.level.collector && check(i,'col',board,col).ok) out.push([i,'col']); }); return out; }
+const isDone = b => b.length===CAP && b.every(c=>c===b[0]);
+function isWon(board=S.board,col=S.col){
+  const L=S.level;
+  if(L.collector){ if(col!==CCAP) return false; if(board.some(b=>b.includes(L.collector.color))) return false; }
+  return board.every(b=>!b.length || isDone(b));
+}
+function starsFor(moves,par){ return moves<=par?3:moves<=Math.ceil(par*1.35)?2:1; }
+const hashOf = (b,col) => b.map(x=>x.join('')).join('|')+'#'+col;
+
+/* ---------- audio (jemné, syntetizované; po interakci) ---------- */
+let AC=null;
+function tone(f,d=.08,type='sine',v=.05){ if(!S.settings.sound) return; try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); const o=AC.createOscillator(),g=AC.createGain(); o.type=type;o.frequency.value=f; g.gain.setValueAtTime(v,AC.currentTime); g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d); o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime+d);}catch(e){} }
+
+/* ---------- helpers ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const app=$('#app');
+const use=(id,cls='')=>`<svg class="${cls}" aria-hidden="true"><use href="#${id}"/></svg>`;
+const later=(fn,ms)=>{ const t=setTimeout(fn,ms*S.slow); S.timers.push(t); return t; };
+const wait=ms=>new Promise(r=>later(r,ms));
+const ms=name=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+function clearTimers(){ S.timers.forEach(clearTimeout); S.timers=[]; }
+function scale(){ const r=app.getBoundingClientRect(); return r.width/app.offsetWidth || 1; }
+function rel(el){ const a=app.getBoundingClientRect(), r=el.getBoundingClientRect(), k=scale(); return {x:(r.left-a.left)/k, y:(r.top-a.top)/k+app.scrollTop, w:r.width/k, h:r.height/k}; }
+function starsHTML(n,size){ return `<span class="stars" aria-label="${n} ze 3 hvězd">${[1,2,3].map(i=>`<svg style="color:${i<=n?'var(--pf-star)':'var(--pf-star-off)'}" aria-hidden="true"><use href="#i-star"/></svg>`).join('')}</span>`; }
+function colorList(b){ if(!b.length) return 'prázdná'; const groups=[]; b.forEach(c=>{ const g=groups[groups.length-1]; if(g&&g.c===c) g.n++; else groups.push({c,n:1}); }); return 'odspodu '+groups.map(g=>`${g.n}× ${COLORS[g.c].gen}`).join(', '); }
+
+/* =========================================================
+   COMPONENTS (string templates → v Reactu 1:1 komponenty)
+   ========================================================= */
+/** LiquidLayer — souvislý blok jedné barvy; výška = n × 25 %, jednotky uvnitř. */
+function LiquidLayer(c,n,cap=CAP){
+  return `<span class="seg" data-component="LiquidLayer" data-color="${c}" data-n="${n}" style="--c:var(--liq-${c});height:${n/cap*100}%">${
+    Array.from({length:n},()=>`<span class="unit">${use('pf-sym-'+c)}</span>`).join('')}</span>`;
+}
+function groups(b){ const g=[]; b.forEach(c=>{ const l=g[g.length-1]; if(l&&l.c===c) l.n++; else g.push({c,n:1}); }); return g; }
+/** Bottle — skleněná baňka (kapacita 4) jako nativní <button>. */
+function Bottle(b,i,{decor=false,cls=''}={}){
+  const done=isDone(b);
+  const label=decor?'':`aria-label="Baňka ${i+1}: ${colorList(b)}${b.length<CAP?`, volno ${CAP-b.length}`:''}${done?', hotová':''}"`;
+  return `<${decor?'span':'button'} class="bottle ${done?'is-done':''} ${cls}" ${decor?'aria-hidden="true"':`type="button" data-i="${i}" aria-pressed="false" ${label}`} data-component="Bottle" style="${done?`--done-c:var(--liq-${b[0]})`:''}">
+    <span class="bottle-body">
+      ${use('pf-glass-back')}
+      <span class="liquid">${groups(b).map(g=>LiquidLayer(g.c,g.n)).join('')}</span>
+      ${use('pf-glass-front')}
+      ${use('pf-cork','cork')}
+    </span>
+    <span class="pad"></span>
+  </${decor?'span':'button'}>`;
+}
+/** Collector — sběrná baňka (kapacita 8). Varianta compact (mobil) a tall (desktop). */
+function Collector(variant){
+  const L=S.level, c=L.collector.color, n=S.col, full=n===CCAP;
+  const aria=`aria-label="Sběrná baňka: ${COLORS[c].name}, ${n} z ${CCAP}. Přijímá jen ${COLORS[c].gen}."`;
+  const label=`<span class="col-label"><span class="col-drop">${use('i-drop')}${use('pf-sym-'+c,'sym-inline')}</span>
+      <span class="col-text"><small>Sběr · ${COLORS[c].name}</small><b>${n}<span>/${CCAP}</span></b></span></span>`;
+  const style=`style="--fill:${n/CCAP};--cc:var(--liq-${c})"`;
+  if(variant==='compact') return `<button type="button" class="collector compact ${full?'is-full':''}" data-col data-component="Collector" ${aria} ${style}>
+      ${label}<span class="tube"><span class="tube-liquid"></span><span class="tube-ticks"></span></span></button>`;
+  return `<button type="button" class="collector tall ${full?'is-full':''}" data-col data-component="Collector" ${aria} ${style}>
+      <span class="tall-body">${use('pf-col-back')}<span class="tall-liquid"><span class="tall-fill"></span></span>
+      <span class="tall-liquid tall-units">${Array.from({length:CCAP},(_,k)=>`<span>${use('pf-sym-'+c,k<n?'on':'')}</span>`).join('')}</span>
+      ${use('pf-col-front')}${use('pf-col-cork','cork')}</span>${label}</button>`;
+}
+/** GameHUD — level, režim, kapitola, tahy, cíl pro 3 hvězdy. */
+function GameHUD(){
+  const L=S.level, ch=CHAPTERS[L.chapter-1];
+  return `<header class="hud" data-component="GameHUD">
+      <button class="icon-btn" data-go="levels" aria-label="Zpět na levely">${use('i-back')}</button>
+      <div class="hud-title"><div class="lvl">Level ${L.id}<span class="mode-chip ${L.mode==='collector'?'is-collector':''}">${L.mode==='collector'?'Sběr':'Classic'}</span></div>
+        <div class="chap">Kapitola ${ch.roman} · ${ch.name}</div></div>
+      <button class="icon-btn" data-open="settings" aria-label="Nastavení">${use('i-gear')}</button>
+    </header>
+    <div class="hud-stats"><span class="moves">Tahy <b data-moves>${S.history.length}</b></span>
+      <span class="par">Cíl pro ${use('i-star')}${use('i-star')}${use('i-star')} ≤ ${L.par} tahů</span></div>`;
+}
+/** ActionBar — Zpět / Nápověda / Znovu (spodní, na dosah palce). */
+function ActionBar(){
+  const none=!S.history.length;
+  return `<nav class="actionbar" data-component="ActionBar" aria-label="Ovládání levelu">
+      <button class="act" data-act="undo" ${none?'disabled':''}>${use('i-undo')}Zpět</button>
+      <button class="act hint" data-act="hint">${use('i-bulb')}Nápověda</button>
+      <button class="act" data-act="restart" ${none?'disabled':''}>${use('i-restart')}Znovu</button>
+    </nav>`;
+}
+/** LevelTile — stav: hotovo / aktuální / zamčeno; Sběr odlišen. */
+function LevelTile(n){
+  const done=PROGRESS.stars[n], cur=n===PROGRESS.current, locked=!done&&!cur, col=n%5===0;
+  const cls=['tile',done?'is-done':'',cur?'is-current':'',locked?'is-locked':'',col?'is-collector':''].join(' ');
+  const aria=`Level ${n}${col?', Sběr':''}${done?`, hotovo, ${done} ${done===1?'hvězda':'hvězdy'}`:cur?', aktuální':', zamčeno'}`;
+  return `<button class="${cls}" data-level="${n}" data-component="LevelTile" aria-label="${aria}" ${locked?'aria-disabled="true"':''}>
+      ${col?`<span class="flask">${use('i-flask')}</span>`:''}
+      ${locked?use('i-lock','lock'):''}<span>${n}</span>
+      ${done?starsHTML(done):cur?'<span class="play">Hraj</span>':''}
+    </button>`;
+}
+
+/* =========================================================
+   SCREENS
+   ========================================================= */
+function motes(n=12){ let h=''; for(let i=0;i<n;i++){ h+=`<span style="left:${(i*37)%100}%;--s:${2+(i%3)}px;--d:${12+(i*7)%10}s;--delay:${-(i*1.7)}s;--dx:${(i%2?1:-1)*(10+i*3)}px"></span>`; } return `<div class="motes" aria-hidden="true">${h}</div>`; }
+
+function renderHome(){
+  const L7 = LEVELS[7];
+  app.dataset.chapter=1;
+  const first=S.firstRun;
+  app.innerHTML=`<section class="screen home" aria-label="Úvod">
+    ${motes(14)}
+    <div class="home-top"><button class="icon-btn" data-open="settings" aria-label="Nastavení">${use('i-gear')}</button></div>
+    <div class="home-hero">
+      <div class="hero-bottles" aria-hidden="true">
+        <div class="hero-glow"></div>
+        ${Bottle(['G','G','Y'],0,{decor:true,cls:'b-side l'})}
+        <span style="position:relative;display:block">${Bottle(['B','V','P','O'],0,{decor:true,cls:'b-main'})}<span class="bubbles">${[18,40,62,30,52].map((x,i)=>`<span style="left:${x}%;animation-delay:${i*.6}s"></span>`).join('')}</span></span>
+        ${Bottle(['R','W','W'],0,{decor:true,cls:'b-side r'})}
+      </div>
+      <h1 class="wordmark"><span class="w1">POTION</span><span class="w2">FLOW</span></h1>
+      <p class="tagline">Přelévej, třiď, uzavři každý lektvar.</p>
+    </div>
+    <div class="home-actions">
+      ${first
+        ? `<button class="btn btn-primary btn-block" data-play="1">${use('i-play')}<span>Hrát<span class="sub">Level 1 · krátký návod</span></span></button>`
+        : `<button class="btn btn-primary btn-block" data-play="resume">${use('i-play')}<span>Pokračovat<span class="sub">Level 7 · rozehráno, 3 tahy</span></span></button>`}
+      <button class="btn btn-block" data-go="levels">${use('i-grid')}Levely</button>
+      ${first?'':`<div class="resume-meta"><span><b>6</b> / 30 hotovo</span><span><b style="color:var(--pf-star)">★ 14</b> / 90</span><span>Kapitola <b>I</b></span></div>`}
+    </div>
+  </section>`;
+}
+
+function renderLevels(){
+  app.dataset.chapter=1;
+  const total=Object.values(PROGRESS.stars).reduce((a,b)=>a+b,0);
+  app.innerHTML=`<section class="screen" aria-label="Výběr levelů">
+    <header class="levels-head"><button class="icon-btn" data-go="home" aria-label="Zpět na úvod">${use('i-back')}</button>
+      <h1>Levely</h1><span class="star-total" aria-label="${total} z 90 hvězd">${use('i-star')}${total}</span></header>
+    <div class="levels-body">
+      ${CHAPTERS.map(ch=>{
+        const ids=Array.from({length:10},(_,k)=>(ch.n-1)*10+k+1);
+        const done=ids.filter(n=>PROGRESS.stars[n]).length, st=ids.reduce((a,n)=>a+(PROGRESS.stars[n]||0),0);
+        const locked=ids.every(n=>!PROGRESS.stars[n]&&n!==PROGRESS.current);
+        return `<section class="chapter ${locked?'is-locked':''}" data-chapter="${ch.n}" aria-label="Kapitola ${ch.roman}">
+          <div class="chapter-head" data-component="ChapterHeader"><div><div class="num">Kapitola ${ch.roman}</div><h2>${ch.name}</h2></div>
+            <div class="prog">${locked?`${use('i-lock','lock').replace('<svg','<svg style="width:16px;height:16px;display:inline-block;vertical-align:-3px"')} po levelu ${(ch.n-1)*10}`:`<b>${done}</b>/10<br>★ ${st}/30`}</div></div>
+          <div class="tiles">${ids.map(LevelTile).join('')}</div></section>`;
+      }).join('')}
+      <div class="legend" aria-hidden="true"><span><i></i>Hotovo</span><span><i class="cur"></i>Aktuální</span><span><i class="lock"></i>Zamčeno</span><span><i class="col"></i>Sběr (každý 5.)</span></div>
+    </div>
+  </section>`;
+}
+
+function renderGame(){
+  const L=S.level, n=S.board.length;
+  const cols=n<=5?n:Math.ceil(n/2), rows=n<=5?1:2;
+  app.dataset.chapter=L.chapter;
+  const focusI=document.activeElement&&document.activeElement.dataset?document.activeElement.dataset.i:null;
+  const focusAct=document.activeElement&&document.activeElement.dataset?document.activeElement.dataset.act:null;
+  app.innerHTML=`<section class="screen game ${L.collector?'has-collector':''}" style="--cols:${cols};--rows:${rows}" aria-label="Level ${L.id}">
+    ${motes(8)}
+    ${GameHUD()}
+    <div class="stage-row">
+      ${L.collector?Collector('tall'):''}
+      <div class="play-area">
+        ${L.collector?Collector('compact'):''}
+        <div class="board-wrap">
+          ${use('pf-sigil','sigil')}
+          <div class="board" role="group" aria-label="Herní plocha">${S.board.map((b,i)=>Bottle(b,i)).join('')}</div>
+        </div>
+      </div>
+    </div>
+    ${ActionBar()}
+    <div class="fx" id="fx"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </section>`;
+  decorate();
+  if(focusI!=null){ const el=$(`.bottle[data-i="${focusI}"]`); el&&el.focus({preventScroll:true}); }
+  if(focusAct){ const el=$(`[data-act="${focusAct}"]`); el&&!el.disabled&&el.focus({preventScroll:true}); }
+  requestAnimationFrame(renderCoach);
+}
+
+/** Aplikuje stavové třídy bez přestavby DOM (výběr, cíle, nápověda). */
+function decorate(){
+  $$('.bottle[data-i]').forEach(el=>{
+    const i=+el.dataset.i, sel=S.selected===i;
+    el.classList.toggle('is-selected',sel); el.setAttribute('aria-pressed',sel);
+    el.classList.toggle('is-target', S.selected!=null && !sel && check(S.selected,i).ok);
+    el.classList.toggle('is-hint-from', !!S.hint && S.hint[0]===i);
+    el.classList.toggle('is-hint-to', !!S.hint && S.hint[1]===i);
+    $$('.badge.n',el).forEach(b=>b.remove());
+    if(S.hint&&S.hint[0]===i) el.insertAdjacentHTML('beforeend','<span class="badge n" aria-hidden="true">1</span>');
+    if(S.hint&&S.hint[1]===i) el.insertAdjacentHTML('beforeend','<span class="badge n" aria-hidden="true">2</span>');
+  });
+  $$('.collector').forEach(el=>{
+    el.classList.toggle('is-target', S.selected!=null && check(S.selected,'col').ok);
+    el.classList.toggle('is-hint-to', !!S.hint && S.hint[1]==='col');
+  });
+  const fx=$('#fx'); if(!fx) return;
+  $$('.hint-arrow',fx).forEach(e=>e.remove());
+  if(S.hint) drawHintArrow();
+}
+
+/* ---------- game flow ---------- */
+function startLevel(id,{history=[],select=null}={}){
+  clearTimers(); S.slow=1; stopLoop();
+  const L=LEVELS[id]; S.level=L; S.board=clone(L.bottles); S.col=0; S.history=[]; S.selected=null; S.hint=null; S.busy=false; S.overlay=null;
+  history.forEach(([i,j])=>{ const r=applyMove(S.board,S.col,i,j); S.history.push({b:S.board,col:S.col}); S.board=r.b; S.col=r.col; });
+  S.selected=select; S.screen='game'; render();
+}
+function onBottle(i){
+  if(S.busy) return;
+  S.hint=null;
+  if(S.selected==null){
+    if(!S.board[i].length){ return; }           // prázdná bez zdroje: nic
+    S.selected=i; tone(660,.07); decorate(); renderCoach(); return;
+  }
+  if(S.selected===i){ S.selected=null; tone(440,.06); decorate(); renderCoach(); return; }
+  tryMove(S.selected,i);
+}
+function onCollector(){
+  if(S.busy) return;
+  S.hint=null;
+  if(S.selected==null){ toast('Ze sběrné baňky nelze přelévat zpět.','warn'); invalidFx('col'); return; }
+  tryMove(S.selected,'col');
+}
+const REASONS={
+  color:'Nahoře musí být stejná barva — nebo prázdná baňka.',
+  full:'Tahle baňka je plná.',
+  'col-color':()=>`Sběrná baňka přijímá jen ${COLORS[S.level.collector.color].gen}.`,
+};
+function tryMove(i,j){
+  const r=check(i,j);
+  if(!r.ok){ const m=REASONS[r.reason]; toast(typeof m==='function'?m():m||'Sem nelze přelít.','warn'); invalidFx(j); tone(180,.12,'triangle',.04); return false; }
+  const prev={b:S.board,col:S.col};
+  const res=applyMove(S.board,S.col,i,j);          // atomická změna stavu
+  S.history.push(prev); S.board=res.b; S.col=res.col; S.selected=null;
+  tone(520,.18,'sine',.04);
+  animatePour(i,j,res.k,res.c,prev).then(afterMove);
+  return true;
+}
+function invalidFx(j){
+  const el = j==='col' ? $$('.collector').find(e=>e.offsetParent) : $(`.bottle[data-i="${j}"]`);
+  if(!el) return;
+  el.classList.remove('is-invalid'); void el.offsetWidth; el.classList.add('is-invalid');
+  if(j!=='col'){ $$('.badge.x',el).forEach(b=>b.remove()); el.insertAdjacentHTML('beforeend','<span class="badge x" aria-hidden="true">✕</span>'); }
+  later(()=>{ el.classList.remove('is-invalid'); $$('.badge.x',el).forEach(b=>b.remove()); },900);
+}
+function afterMove(){
+  S.busy=false; renderGame();
+  if(isWon()){ winSequence(); return; }
+  if(!legalMoves().length){ later(()=>openOverlay('nomoves'),250); }
+}
+function undo(){
+  if(!S.history.length) return;
+  clearTimers(); stopLoop(); S.slow=1;
+  const p=S.history.pop(); S.board=p.b; S.col=p.col; S.selected=null; S.hint=null; S.busy=false; closeOverlay(true);
+  tone(380,.08); renderGame();
+}
+function restart(){ clearTimers(); stopLoop(); closeOverlay(true); startLevel(S.level.id); }
+function showHint(){
+  if(S.busy) return;
+  // Prototyp: nápověda jen z certifikátu, pokud je aktuální stav na ověřené cestě.
+  const L=S.level; let b=clone(L.bottles), col=0, h=S.history.length, onPath=true;
+  for(let k=0;k<h;k++){ const r=applyMove(b,col,...L.solution[k]); if(!r){onPath=false;break;} b=r.b; col=r.col; }
+  if(onPath && hashOf(b,col)===hashOf(S.board,S.col) && h<L.solution.length){
+    const [f,t]=L.solution[h]; S.hint=[f,t]; S.selected=null; decorate();
+    toast(`Nápověda: přelij z baňky ${f+1} ${t==='col'?'do sběrné baňky':'do baňky '+(t+1)}.`,'hint');
+  } else {
+    S.hint=null; decorate();
+    toast('Nápovědu se teď nepodařilo spočítat. Zkus vrátit poslední tah.','hint');
+  }
+}
+
+/* ---------- POUR ANIMATION ----------
+   1) let k cíli (travel), 2) náklon + proud + změna hladin (pour), 3) návrat.
+   Stav je už potvrzený; animace jen přechází mezi snapshoty. */
+async function animatePour(i,j,k,c,prev){
+  S.busy=true;
+  const src=$(`.bottle[data-i="${i}"]`);
+  const tgt= j==='col' ? $$('.collector').find(e=>e.offsetParent) : $(`.bottle[data-i="${j}"]`);
+  const body=$('.bottle-body',src);
+  const reduced=S.settings.reduced;
+  const tTravel=ms('--pf-dur-travel'), tPour=ms('--pf-dur-pour');
+  if(reduced||!src||!tgt){
+    // Omezené animace: bez letu a částic — jen jasná změna hladin + krátké zvýraznění.
+    src&&src.classList.add('is-flash'); tgt&&tgt.classList.add('is-flash');
+    animLevels(i,j,k,c,140); await wait(170); return;
+  }
+  const k_=scale();
+  const sb=src.getBoundingClientRect();
+  const bw=body.offsetWidth*k_, bh=body.offsetHeight*k_;
+  const mouth={x:sb.left+sb.width/2, y:sb.top+bh*0.03};
+  let aim;
+  if(j==='col'){
+    const tube=$('.tube',tgt)||$('.tall-body',tgt), tr=tube.getBoundingClientRect();
+    if($('.tube',tgt)) aim={x:tr.left+tr.width*Math.min(.86,Math.max(.14,(S.col-k/2)/CCAP)), y:tr.top-bh*0.06, endY:tr.top+tr.height*.55};
+    else aim={x:tr.left+tr.width/2, y:tr.top-bh*0.08, endY:tr.top+tr.height*(1-.0462-(S.col/CCAP)*.7115)};
+  } else {
+    const tb=$('.bottle-body',tgt).getBoundingClientRect();
+    const after=S.board[j].length;
+    aim={x:tb.left+tb.width/2, y:tb.top-bh*0.10, endY:tb.top+tb.height*((173-after*30)/180)};
+  }
+  // náklon volí stranu s víc místem, aby tělo baňky nevyjelo z obrazovky
+  const ar=app.getBoundingClientRect(), roomL=aim.x-ar.left, roomR=ar.right-aim.x;
+  const dir= Math.abs(roomL-roomR)>24 ? (roomL>roomR?1:-1) : (aim.x>=mouth.x?1:-1);
+  const dx=(aim.x-dir*bw*0.08-mouth.x)/k_, dy=(aim.y-mouth.y)/k_;
+  src.classList.add('is-pouring');
+  body.style.transition=`transform ${tTravel*S.slow}ms var(--pf-ease-in-out)`;
+  body.style.transform=`translate(${dx}px,${dy}px) rotate(${dir*64}deg)`;
+  await wait(tTravel);
+  // stream
+  const a=app.getBoundingClientRect();
+  const fx=$('#fx'); const st=document.createElement('div'); st.className='stream';
+  const sx=(aim.x-dir*bw*0.08-a.left)/k_ + dir*2, sy=(aim.y-a.top)/k_;
+  st.style.cssText=`--c:var(--liq-${c});left:${sx}px;top:${sy}px;height:${Math.max(8,(aim.endY-aim.y)/k_)}px;transition:transform ${70*S.slow}ms linear`;
+  fx.appendChild(st); void st.offsetWidth; st.style.transform='scaleY(1)';
+  animLevels(i,j,k,c,tPour);
+  await wait(tPour);
+  st.style.transformOrigin='50% 100%'; st.style.transform='scaleY(0)';
+  body.style.transform='';
+  await wait(tTravel);
+  st.remove(); src.classList.remove('is-pouring'); body.style.transition='';
+}
+function animLevels(i,j,k,c,dur){
+  const d=dur*S.slow;
+  const sl=$(`.bottle[data-i="${i}"] .liquid`);
+  if(sl){ const top=sl.lastElementChild; if(top){ const n=+top.dataset.n-k; top.style.transition=`height ${d}ms linear`; top.style.height=(n/CAP*100)+'%'; } }
+  if(j==='col'){
+    $$('.collector').forEach(el=>{ el.style.setProperty('--fill',S.col/CCAP); $$('.tube-liquid,.tall-fill',el).forEach(f=>f.style.transitionDuration=d+'ms'); const b=$('.col-text b',el); if(b) b.innerHTML=`${S.col}<span>/${CCAP}</span>`; });
+    return;
+  }
+  const tl=$(`.bottle[data-i="${j}"] .liquid`); if(!tl) return;
+  const last=tl.lastElementChild;
+  if(last && last.dataset.color===c){ last.style.transition=`height ${d}ms linear`; last.style.height=((+last.dataset.n+k)/CAP*100)+'%'; }
+  else{
+    tl.insertAdjacentHTML('beforeend',LiquidLayer(c,k)); const seg=tl.lastElementChild;
+    seg.style.height='0%'; void seg.offsetHeight; seg.style.transition=`height ${d}ms linear`; seg.style.height=(k/CAP*100)+'%';
+  }
+}
+
+/* ---------- WIN ---------- */
+function winSequence(){
+  S.busy=true;
+  const reduced=S.settings.reduced;
+  const full=$$('.bottle[data-i]').filter(el=>isDone(S.board[+el.dataset.i]));
+  full.forEach((el,k)=>later(()=>{ el.classList.add('is-corked'); tone(700+k*60,.09); if(!reduced) sparks(el); }, reduced?0:k*90));
+  $$('.collector').forEach(el=>later(()=>el.classList.add('is-corked'), reduced?0:full.length*90));
+  const L=S.level, mv=S.history.length, st=starsFor(mv,L.par);
+  PROGRESS.stars[L.id]=Math.max(PROGRESS.stars[L.id]||0,st);
+  PROGRESS.best[L.id]=Math.min(PROGRESS.best[L.id]||Infinity,mv);
+  later(()=>{ tone(880,.25,'sine',.05); openOverlay('win'); }, reduced?250:full.length*90+650);
+}
+function sparks(el){
+  const fx=$('#fx'); if(!fx) return; const r=rel($('.bottle-body',el)); const c=S.board[+el.dataset.i][0];
+  for(let s=0;s<7;s++){ const sp=document.createElement('span'); sp.className='spark'; const ang=-Math.PI/2+(s-3)*.42;
+    sp.style.cssText=`--c:var(--liq-${c});left:${r.x+r.w/2}px;top:${r.y-app.scrollTop+r.h*.04}px;--dx:${Math.cos(ang)*48}px;--dy:${Math.sin(ang)*48}px`;
+    fx.appendChild(sp); later(()=>sp.remove(),950); }
+}
+
+/* ---------- COACH (tutorial přímo na ploše) ---------- */
+function renderCoach(){
+  const fx=$('#fx'); if(!fx) return; $$('.coach,.tap-ring',fx).forEach(e=>e.remove());
+  const L=S.level; if(!L||!L.tutorial||S.busy||S.overlay) return;
+  const h=S.history.length; if(h>=L.solution.length) return;
+  // jen pokud hráč zůstává na tutorialové cestě
+  let b=clone(L.bottles),col=0; for(let k=0;k<h;k++){ const r=applyMove(b,col,...L.solution[k]); b=r.b; col=r.col; }
+  if(hashOf(b,col)!==hashOf(S.board,S.col)) return;
+  const [f,t]=L.solution[h];
+  let idx, title, sub;
+  if(S.selected==null){ idx=f; title= h===0?'Vyber baňku':'Vyber další baňku'; sub= h===0?'Klepni na ni.':'Nahoře je rubínová.'; }
+  else if(S.selected===f){ idx=t; title= h===0?'Přelij do prázdné baňky':'Přelij stejnou barvu na stejnou'; sub= h===0?'Přelije se celý vrchní blok.':'Rubín na rubín.'; }
+  else return;
+  const el=$(`.bottle[data-i="${idx}"] .bottle-body`); if(!el) return;
+  const r=rel(el), y=r.y-app.scrollTop;
+  const aw=app.offsetWidth, cx=Math.min(aw-115,Math.max(115,r.x+r.w/2));
+  const lift = S.selected===idx?r.h*.09:0;
+  fx.insertAdjacentHTML('beforeend',`<div class="coach" data-component="Coach" style="left:${cx}px;top:${y-12-lift}px"><div class="coach-bubble">${title}<small>${sub}</small></div><div class="coach-arrow" style="margin-left:${(r.x+r.w/2-cx)*2}px"></div></div>
+     <span class="tap-ring" style="left:${r.x+r.w/2}px;top:${y+r.h*.6}px"></span>`);
+}
+function drawHintArrow(){
+  const fx=$('#fx'); const [f,t]=S.hint;
+  const a=$(`.bottle[data-i="${f}"] .bottle-body`); const bEl= t==='col' ? ($$('.collector').find(e=>e.offsetParent)) : $(`.bottle[data-i="${t}"] .bottle-body`);
+  if(!a||!bEl) return;
+  const A=rel(a), B=rel(bEl); const st=app.scrollTop;
+  const x1=A.x+A.w/2, y1=A.y-st-6, x2=B.x+B.w/2, y2=(t==='col'?B.y+B.h:B.y)-st-6;
+  const mx=(x1+x2)/2, my=Math.min(y1,y2)-(t==='col'?-10:40);
+  fx.insertAdjacentHTML('beforeend',`<svg class="hint-arrow" aria-hidden="true"><path d="M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}"/></svg>`);
+}
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg,kind=''){ const t=$('#toast'); if(!t) return; t.className='toast is-on '+kind; t.textContent=msg; clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('is-on'),2600); }
+
+/* =========================================================
+   OVERLAYS: WinDialog, NoMoves, Settings, Campaign
+   ========================================================= */
+function openOverlay(kind){ S.overlay=kind; $$('.scrim',app).forEach(e=>e.remove()); app.insertAdjacentHTML('beforeend',overlayHTML(kind)); const first=$('.scrim [data-autofocus]',app)||$('.scrim button',app); first&&first.focus({preventScroll:true}); renderCoach(); }
+function closeOverlay(silent){ S.overlay=null; $$('.scrim',app).forEach(e=>e.remove()); if(!silent) renderCoach(); }
+function overlayHTML(kind){
+  if(kind==='settings'){
+    const row=(key,icon,title,sub)=>`<button class="set-row" role="switch" aria-checked="${S.settings[key]}" data-set="${key}"><span class="ic">${use(icon)}</span><span><b>${title}</b><small>${sub}</small></span><span class="switch"></span></button>`;
+    return `<div class="scrim" data-scrim><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="setTitle" data-component="Sheet">
+      <button class="icon-btn sheet-close" data-close aria-label="Zavřít">${use('i-close')}</button>
+      <h2 id="setTitle">Nastavení</h2>
+      <div class="set-list">
+        ${row('sound','i-sound','Zvuk','Jemné zvuky výběru, přelití a výhry.')}
+        ${row('reduced','i-motion','Omezené animace','Bez letu baněk a částic. Změna hladin zůstává.')}
+        ${row('symbols','i-shapes','Symboly barev','Každá barva má vlastní tvar.')}
+      </div>
+      <div class="swatches" aria-hidden="true">${Object.keys(COLORS).map(c=>`<span class="swatch" style="--c:var(--liq-${c})" title="${COLORS[c].name}">${S.settings.symbols?use('pf-sym-'+c):''}</span>`).join('')}</div>
+      <p class="set-foot">Postup se ukládá jen v tomto prohlížeči.</p>
+    </div></div>`;
+  }
+  if(kind==='nomoves'){
+    return `<div class="scrim"><div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="nmTitle" aria-describedby="nmDesc" data-component="Sheet">
+      <div class="nomoves-icon">${use('i-stuck')}</div>
+      <h2 id="nmTitle">Žádný další tah</h2>
+      <p id="nmDesc">Nahoře jsou samé různé barvy a nikde není místo. Vrať tah, nebo začni level znovu.</p>
+      <div class="sheet-actions" style="margin-top:18px"><div class="row">
+        <button class="btn btn-primary" data-act="undo" data-autofocus style="font-size:18px">${use('i-undo')}Zpět</button>
+        <button class="btn" data-act="restart" style="min-height:60px">${use('i-restart')}Znovu</button></div></div>
+    </div></div>`;
+  }
+  if(kind==='campaign'){
+    const total=Object.values(PROGRESS.stars).reduce((a,b)=>a+b,0);
+    return `<div class="scrim"><div class="sheet win" role="dialog" aria-modal="true" aria-labelledby="cmpTitle" data-component="WinDialog">
+      <div class="eyebrow">Level 30 hotový</div>
+      <div class="campaign-crest" aria-hidden="true">${['R','O','Y','G','B','V','P','W'].map(c=>Bottle([c,c,c,c],0,{decor:true,cls:'is-corked'})).join('')}</div>
+      <h2 id="cmpTitle">Kampaň dokončena!</h2>
+      <p>Všech 30 lektvarů je uzavřených. Vrať se k levelům a dosbírej hvězdy.</p>
+      <div class="win-stats"><div class="stat"><small>Levely</small><b>30/30</b></div><div class="stat best"><small>Hvězdy</small><b>★ ${total}/90</b></div></div>
+      <div class="sheet-actions"><button class="btn btn-primary btn-block" data-go="levels" data-autofocus>${use('i-grid')}Zpět na levely</button></div>
+    </div></div>`;
+  }
+  // win
+  const L=S.level, mv=S.history.length, st=starsFor(mv,L.par), best=PROGRESS.best[L.id];
+  const next=DEMO_ORDER[DEMO_ORDER.indexOf(L.id)+1];
+  return `<div class="scrim"><div class="sheet win" role="dialog" aria-modal="true" aria-labelledby="winTitle" data-component="WinDialog">
+    <div class="eyebrow">Level ${L.id} · ${L.mode==='collector'?'Sběr':'Classic'}</div>
+    <div class="win-stars" role="img" aria-label="${st} ze 3 hvězd">${[1,2,3].map(k=>`<svg class="${k<=st?'on':''}"><use href="#i-star"/></svg>`).join('')}</div>
+    <h2 id="winTitle">${st===3?'Mistrovské!':st===2?'Výborně!':'Hotovo!'}</h2>
+    <div class="win-stats"><div class="stat"><small>Tahy</small><b>${mv}</b></div><div class="stat best"><small>Cíl pro 3 ★</small><b>≤ ${L.par}</b></div></div>
+    <div class="sheet-actions">
+      <button class="btn btn-primary btn-block" data-next="${next||'campaign'}" data-autofocus>Další level${use('i-play')}</button>
+      <div class="row"><button class="btn" data-act="restart">${use('i-restart')}Znovu</button><button class="btn" data-go="levels">${use('i-grid')}Levely</button></div>
+    </div>
+  </div></div>`;
+}
+
+/* =========================================================
+   ROUTING & EVENTS
+   ========================================================= */
+function render(){
+  app.dataset.reduced=S.settings.reduced; app.dataset.symbols=S.settings.symbols;
+  if(S.screen==='home') renderHome();
+  else if(S.screen==='levels') renderLevels();
+  else renderGame();
+  app.scrollTop=0;
+}
+app.addEventListener('click',e=>{
+  const t=e.target.closest('button'); if(!t||!app.contains(t)) return;
+  if(t.dataset.i!=null && !t.closest('.scrim')) return onBottle(+t.dataset.i);
+  if(t.hasAttribute('data-col')) return onCollector();
+  if(t.dataset.act){ const a=t.dataset.act; if(a==='undo') return undo(); if(a==='restart') return restart(); if(a==='hint') return showHint(); }
+  if(t.dataset.go){ clearTimers(); stopLoop(); S.overlay=null; S.screen=t.dataset.go; S.firstRun=false; return render(); }
+  if(t.dataset.play){ return t.dataset.play==='resume' ? startLevel(7,{history:LEVELS[7].solution.slice(0,3)}) : startLevel(1); }
+  if(t.dataset.open==='settings') return openOverlay('settings');
+  if(t.hasAttribute('data-close')) return closeOverlay();
+  if(t.dataset.set){ const k=t.dataset.set; S.settings[k]=!S.settings[k]; app.dataset.reduced=S.settings.reduced; app.dataset.symbols=S.settings.symbols; syncPvToggles(); t.setAttribute('aria-checked',S.settings[k]); if(k==='symbols'){ $('.swatches',app).outerHTML=overlayHTML('settings').match(/<div class="swatches"[\s\S]*?<\/div>/)[0]; } return; }
+  if(t.dataset.next){ const n=t.dataset.next; if(n==='campaign'){ S.screen='levels'; render(); return openOverlay('campaign'); } return startLevel(+n); }
+  if(t.dataset.level){
+    const n=+t.dataset.level;
+    if(t.getAttribute('aria-disabled')==='true'){ return toastLevels(`Zamčeno — nejdřív dokonči level ${n-1}.`); }
+    if(LEVELS[n]) return startLevel(n);
+    return toastLevels(`V prototypu jsou hratelné levely ${DEMO_ORDER.join(', ')}.`);
+  }
+});
+app.addEventListener('click',e=>{ if(e.target.matches('[data-scrim]')) closeOverlay(); });
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape' && S.overlay==='settings') closeOverlay();
+  if(e.key==='Tab' && S.overlay){ const f=$$('.scrim button',app); if(!f.length) return; const i=f.indexOf(document.activeElement); if(e.shiftKey&&i<=0){e.preventDefault();f[f.length-1].focus()} else if(!e.shiftKey&&i===f.length-1){e.preventDefault();f[0].focus()} }
+});
+function toastLevels(msg){ let t=$('#toast'); if(!t){ app.firstElementChild.insertAdjacentHTML('beforeend','<div class="toast" id="toast" role="status" aria-live="polite" style="position:fixed"></div>'); } toast(msg); }
+
+/* =========================================================
+   NÁHLED — přepínání obrazovek / stavů / viewportu
+   ========================================================= */
+function stopLoop(){ if(S.loop){ clearInterval(S.loop); S.loop=null; } }
+const PV = {
+  'home':()=>{ S.firstRun=false; S.screen='home'; render(); },
+  'home-first':()=>{ S.firstRun=true; S.screen='home'; render(); },
+  'levels':()=>{ S.screen='levels'; render(); },
+  'classic':()=>startLevel(7,{history:LEVELS[7].solution.slice(0,3)}),
+  'collector':()=>startLevel(5,{history:LEVELS[5].solution.slice(0,4)}),
+  'tutorial':()=>startLevel(1),
+  'max':()=>startLevel(28),
+  'settings':()=>{ startLevel(7,{history:LEVELS[7].solution.slice(0,3)}); openOverlay('settings'); },
+  'win':()=>{ startLevel(7,{history:LEVELS[7].solution.slice(0,13)}); later(()=>tryMove(3,4),350); },
+  'campaign':()=>{ PROGRESS=PROGRESS_DONE; S.screen='levels'; render(); openOverlay('campaign'); },
+  'st-selected':()=>startLevel(7,{history:LEVELS[7].solution.slice(0,3),select:2}),
+  'st-invalid':()=>{ startLevel(7,{history:LEVELS[7].solution.slice(0,3),select:2}); later(()=>tryMove(2,1),450); },
+  'st-pour':()=>{
+    startLevel(7,{history:LEVELS[7].solution.slice(0,3),select:2}); S.slow=4;
+    const run=()=>{ if(S.screen!=='game'||S.level.id!==7) return stopLoop(); clearTimers(); S.slow=4; S.board=clone(LEVELS[7].bottles); S.col=0; S.history=[];
+      LEVELS[7].solution.slice(0,3).forEach(([i,j])=>{ const r=applyMove(S.board,S.col,i,j); S.history.push({b:S.board,col:S.col}); S.board=r.b; }); S.selected=2; S.busy=false; renderGame();
+      setTimeout(()=>{ const prev={b:S.board,col:S.col}; const r=applyMove(S.board,S.col,2,4); S.history.push(prev); S.board=r.b; S.selected=null; animatePour(2,4,r.k,r.c,prev).then(()=>{ S.busy=false; }); },500); };
+    run(); S.loop=setInterval(run,5200);
+  },
+  'st-hint':()=>{ startLevel(7,{history:LEVELS[7].solution.slice(0,3)}); later(showHint,200); },
+  'st-collector-hint':()=>{ startLevel(5,{history:LEVELS[5].solution.slice(0,5),select:1}); later(()=>{ toast('Sběrná baňka svítí: vrchní jantar sem smí.','hint'); },300); later(()=>{ S.selected=4; decorate(); tryMove(4,'col'); },2600); },
+  'st-stuck':()=>{ startLevel(28,{history:[[0,8],[0,9]]}); later(()=>openOverlay('nomoves'),300); },
+  'tokens':()=>{},
+};
+function setPreview(key){
+  S.preview=key; $$('[data-pv]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.pv===key));
+  const stage=$('#stage'), holder=$('#holder');
+  $$('.spec',stage).forEach(e=>e.remove());
+  if(key==='tokens'){ holder.style.display='none'; stage.insertAdjacentHTML('beforeend',specHTML()); return; }
+  holder.style.display='';
+  clearTimers(); stopLoop(); S.slow=1; S.overlay=null; PROGRESS=PROGRESS_DEMO;
+  PV[key]();
+  closePanelOnMobile();
+}
+const VP={'390x844':[390,844,'phone',47,34],'375x667':[375,667,'phone',20,0],'360x800':[360,800,'phone',36,24],'320x568':[320,568,'phone',20,0],'768x1024':[768,1024,'tablet',24,20],'1440x900':[1440,900,'desktop',0,0],'fill':null};
+function applyViewport(){
+  const narrow=matchMedia('(max-width:760px)').matches;
+  const v=narrow?null:VP[S.viewport];
+  const dev=$('#device'), holder=$('#holder'), stage=$('#stage');
+  $$('[data-vp]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.vp===S.viewport));
+  $$('.faux-status,.faux-home,.pv-size',dev.parentNode).forEach(e=>e.remove());
+  if(!v){ dev.className='device is-fill'; dev.style.cssText=''; holder.style.cssText=''; app.style.removeProperty('--safe-top'); app.style.removeProperty('--safe-bottom'); return; }
+  const [w,h,kind,st,sb]=v;
+  const pad=narrow?0:56; const k=Math.min(1,(stage.clientWidth-pad)/w,(stage.clientHeight-pad-20)/h);
+  dev.className='device is-'+kind; dev.style.width=w+'px'; dev.style.height=h+'px'; dev.style.transform=`scale(${k})`;
+  holder.style.width=w*k+'px'; holder.style.height=h*k+'px';
+  // simulované safe areas telefonu (v reálném zařízení přebírá env())
+  app.style.setProperty('--safe-top',st+'px'); app.style.setProperty('--safe-bottom',sb+'px');
+  if(kind==='phone'){ dev.insertAdjacentHTML('beforeend',`<div class="faux-status ${st<30?'is-sm':''}"><span>9:41</span><i></i><span>●●● ▮</span></div>${sb?'<div class="faux-home"></div>':''}`); }
+  holder.insertAdjacentHTML('afterbegin',`<div class="pv-size">${w}×${h}${k<1?` · zmenšeno na ${Math.round(k*100)} %`:''}</div>`);
+}
+function syncPvToggles(){ $$('[data-pv-set]').forEach(c=>{ const k=c.dataset.pvSet; c.checked = k==='annotate'?S.annotate:S.settings[k]; }); }
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-pv]'); if(b) return setPreview(b.dataset.pv);
+  const v=e.target.closest('[data-vp]'); if(v){ S.viewport=v.dataset.vp; applyViewport(); if(S.screen==='game'&&!S.busy) renderGame(); return; }
+  if(e.target.closest('[data-pv-close]')) return $('#preview').classList.remove('is-open');
+  if(e.target.closest('#pvTab')) return $('#preview').classList.add('is-open');
+});
+document.addEventListener('change',e=>{
+  const c=e.target.closest('[data-pv-set]'); if(!c) return; const k=c.dataset.pvSet;
+  if(k==='annotate'){ S.annotate=c.checked; document.body.classList.toggle('annotate',S.annotate); return; }
+  S.settings[k]=c.checked; app.dataset.reduced=S.settings.reduced; app.dataset.symbols=S.settings.symbols;
+  if(S.overlay==='settings') { closeOverlay(true); openOverlay('settings'); }
+});
+function closePanelOnMobile(){ $('#preview').classList.remove('is-open'); }
+let rz; addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>{ applyViewport(); if(S.screen==='game'&&!S.busy){ decorate(); renderCoach(); } },120); });
+
+/* ---------- spec sheet ---------- */
+function specHTML(){
+  const tok=(n)=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const colors=Object.entries(COLORS).map(([id,c])=>`<div class="tok"><i style="background:var(--liq-${id})">${use('pf-sym-'+id)}</i><b>${c.name} · ${id}</b>--liq-${id}<br>${tok('--liq-'+id)} · ${c.sym}</div>`).join('');
+  const ui=['--pf-bg-0','--pf-bg-1','--pf-bg-2','--pf-surface-2','--pf-line-strong','--pf-text','--pf-text-dim','--pf-gold','--pf-gold-deep','--pf-hint','--pf-target','--pf-danger','--pf-star'].map(n=>`<div class="tok"><i style="background:var(${n});border:1px solid #30363d"></i>${n}<br>${tok(n)}</div>`).join('');
+  const rows=(arr)=>arr.map(n=>`<tr><td><code>${n}</code></td><td>${tok(n)}</td></tr>`).join('');
+  return `<div class="spec">
+    <h1>POTION FLOW — tokeny a komponenty</h1>
+    <p>Předloha pro React implementaci. Hodnoty jsou živě čteny z <code>:root</code>. Barvy tekutin mají stabilní ID (R/O/Y/G/B/V/P/W) nezávislé na CSS; symboly se zobrazují při zapnutém nastavení „Symboly barev".</p>
+    <h2>Tekutiny (max. 8)</h2><div class="grid">${colors}</div>
+    <h2>UI barvy</h2><div class="grid">${ui}</div>
+    <h2>Typografie</h2><table>${rows(['--pf-font-display','--pf-font-ui','--pf-fs-xs','--pf-fs-sm','--pf-fs-md','--pf-fs-lg','--pf-fs-xl','--pf-fs-2xl'])}</table>
+    <h2>Spacing · radius · touch</h2><table>${rows(['--pf-sp-1','--pf-sp-2','--pf-sp-3','--pf-sp-4','--pf-sp-6','--pf-sp-8','--pf-gutter','--pf-r-sm','--pf-r-md','--pf-r-lg','--pf-r-xl','--pf-touch','--pf-action-h'])}</table>
+    <h2>Pohyb</h2><table>${rows(['--pf-dur-select','--pf-dur-travel','--pf-dur-pour','--pf-dur-shake','--pf-dur-dialog','--pf-ease-out','--pf-ease-in-out','--pf-ease-spring'])}</table>
+    <p>Nalití = travel (190) → pour (320) → návrat (190). Vstup na plochu je během animace zamčený; Zpět/Znovu animaci zruší. Omezené animace: bez letu, proudu a částic; hladiny se změní za ~140 ms se zvýrazněním obou baněk.</p>
+    <h2>Komponenty</h2>
+    <table><tr><th>Komponenta</th><th>Props / stav</th><th>Poznámky</th></tr>
+      <tr><td><code>Bottle</code></td><td>units: ColorId[] (odspodu), index, selected, isTarget, invalidPulse, hint: 'from'|'to'|null, corked</td><td>Nativní &lt;button&gt;, aria-pressed, aria-label s obsahem. SVG sklo (viewBox 64×180, vnitřek y 53–173 = 4×30) + HTML vrstva kapaliny. Sklo má pointer-events:none. Hotová baňka se nezamyká. Šířka z container query, dotyková plocha ≥ 48 px.</td></tr>
+      <tr><td><code>LiquidLayer</code></td><td>color, count, capacity</td><td>Sloučí souvislé jednotky; výška = count/capacity. Menisk jen na vrchní vrstvě. Ryská na skle čtvrtin drží čitelnost objemu. Symbol na každou jednotku.</td></tr>
+      <tr><td><code>Collector</code></td><td>color, units (0–8), variant: 'compact'|'tall', isTarget</td><td>Jen cíl, nikdy zdroj (klepnutí bez výběru = vysvětlení). Mobil: vodorovná trubice nad plochou s 8 ryskami a „n/8". ≥960 px: vysoká baňka vlevo.</td></tr>
+      <tr><td><code>GameHUD</code></td><td>level, mode, chapter, moves, parMoves</td><td>Zpět na levely · název + režim · nastavení. „Cíl pro 3★ ≤ par" (ne „nejlepší možné").</td></tr>
+      <tr><td><code>ActionBar</code></td><td>canUndo, onUndo, onHint, onRestart</td><td>3 tlačítka 58 px vysoká na spodku (palec). Zpět/Znovu disabled bez historie.</td></tr>
+      <tr><td><code>LevelTile</code></td><td>id, state: done|current|locked, stars, isCollector</td><td>Sběr = každý 5. level: oranžový vnitřní rámeček + odznak baňky.</td></tr>
+      <tr><td><code>WinDialog</code></td><td>level, moves, parMoves, stars, isLast</td><td>Hvězdy 1–3, Tahy, Cíl pro 3★, primární „Další level". Po L30 varianta „Kampaň dokončena" → Zpět na levely.</td></tr>
+      <tr><td><code>Toast</code> · <code>Coach</code> · <code>Sheet</code></td><td>—</td><td>Toast: nepovolený tah / nápověda (aria-live). Coach: bublina + puls na ploše, neblokuje vstup. Sheet: Nastavení, Bez tahů (alertdialog), focus trap, Esc.</td></tr>
+    </table>
+    <h2>Rozvržení plochy</h2>
+    <p>≤ 5 baněk: 1 řada. 6–10 baněk: 2 řady po ⌈n/2⌉. Velikost baňky = min(šířka sloupce, výška řady × 64/180, 80 px; tablet+ 92 px). Plocha má min. výšku řady 168 px — při malé výšce nebo zvětšeném textu se obrazovka svisle posouvá, nikdy vodorovně.</p>
+  </div>`;
+}
+
+/* ---------- init ---------- */
+syncPvToggles();
+applyViewport();
+setPreview('home');
+</script>
+</body>
+</html>

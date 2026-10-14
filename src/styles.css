@@ -1,0 +1,265 @@
+/* Production shell and states, derived from the supplied design. */
+html,
+body,
+#root {
+  min-height: 100%;
+  height: auto;
+}
+body {
+  background: var(--pf-bg-0);
+  overflow: auto;
+}
+button {
+  touch-action: manipulation;
+}
+.app {
+  position: relative;
+  inset: auto;
+  min-height: 100dvh;
+  overflow-x: clip;
+  overflow-y: visible;
+}
+.screen {
+  min-height: 100dvh;
+}
+.game {
+  height: 100dvh;
+  min-height: 600px;
+}
+.game.has-collector {
+  min-height: 640px;
+}
+.board-wrap {
+  isolation: isolate;
+}
+.board {
+  position: relative;
+  z-index: 2;
+}
+.board-wrap .motes {
+  z-index: 0;
+}
+.game .stage-row {
+  min-height: 0;
+}
+.home .sigil {
+  z-index: 0;
+}
+.gold {
+  color: var(--pf-star);
+}
+.stars {
+  display: flex;
+  gap: 1px;
+}
+.stars svg {
+  width: 16px;
+  height: 16px;
+}
+.tutorial-note {
+  flex: none;
+  position: relative;
+  width: min(310px, calc(100% - 32px));
+  margin: 10px auto 0;
+  z-index: 20;
+  text-align: center;
+  pointer-events: none;
+}
+.has-tutorial .board-wrap {
+  min-height: calc(var(--rows) * 144px + 24px);
+}
+.tutorial-note .coach-bubble {
+  display: block;
+  max-width: none;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.scrim {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  color: var(--pf-text);
+  border: 0;
+  overflow: hidden;
+}
+.scrim:not([open]) {
+  display: none;
+}
+.scrim::backdrop {
+  background: transparent;
+}
+.sheet {
+  flex: none;
+}
+.sheet h2 {
+  padding: 0 32px;
+}
+.win .sheet h2 {
+  padding: 0;
+}
+.sheet-actions {
+  margin-top: 18px;
+}
+.storage-notice {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(420px, calc(100% - 24px));
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--pf-line-strong);
+  border-radius: 16px;
+  background: #14454d;
+  box-shadow: 0 5px 30px #0008;
+  font-size: 13px;
+}
+.storage-notice button {
+  flex: none;
+  border: 0;
+  background: none;
+  width: 48px;
+  height: 48px;
+  padding: 12px;
+}
+.toast {
+  position: fixed;
+}
+.set-row:disabled {
+  opacity: 0.7;
+}
+.swatches .swatch svg {
+  display: block;
+}
+.pour-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  overflow: hidden;
+}
+.pour-ghost {
+  position: absolute;
+  transform-origin: 50% 5%;
+  animation: pour-travel var(--pour-duration) ease-in-out both;
+}
+.pour-ghost .pad {
+  display: none;
+}
+.pour-stream {
+  position: absolute;
+  width: 6px;
+  height: 48px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #fff4, var(--c));
+  transform-origin: top;
+  animation: pour-stream var(--pour-duration) linear both;
+}
+.bottle-body,
+.liquid,
+.pad,
+.bottle svg {
+  pointer-events: none;
+}
+[data-reduced="true"] * {
+  transition-duration: 0ms !important;
+  scroll-behavior: auto !important;
+}
+@keyframes pour-travel {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0);
+  }
+  30%,
+  72% {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--angle));
+  }
+}
+@keyframes pour-stream {
+  0%,
+  28%,
+  78%,
+  100% {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  35%,
+  70% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 0ms !important;
+  }
+  .motes {
+    display: none;
+  }
+}
+@container app (min-width:960px) {
+  .game:not(.has-collector) .stage-row {
+    display: flex;
+    max-width: 640px;
+  }
+  .game.has-collector .stage-row {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 640px);
+  }
+}
+@media (max-width: 359px) {
+  .hud-title .lvl {
+    font-size: 23px;
+  }
+  .hud-stats {
+    font-size: 12px;
+  }
+  .hud-stats .par {
+    gap: 2px;
+  }
+  .board {
+    column-gap: 6px;
+  }
+  .tiles {
+    gap: 7px;
+  }
+  .tutorial-note .coach-bubble {
+    font-size: 12px;
+  }
+  .set-row {
+    gap: 8px;
+    padding: 10px 8px;
+  }
+  .set-row b {
+    font-size: 14px;
+  }
+}
+@media (max-height: 700px) {
+  .home-hero {
+    min-height: 270px;
+  }
+  .hero-bottles {
+    height: 160px;
+  }
+  .hero-bottles .b-main {
+    --bw: 64px;
+  }
+  .hero-bottles .b-side {
+    --bw: 42px;
+  }
+}
+
+.collector.is-empty .tube-liquid::after,
+.collector.is-empty .tall-fill::before {
+  display: none;
+}
