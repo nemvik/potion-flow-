@@ -36,6 +36,7 @@ import {
   Stars,
   css,
   targetLabel,
+  type LiquidTransfer,
 } from "./components/Visuals";
 import { Sheet } from "./components/Sheet";
 import type { SearchResult } from "./game/solver";
@@ -48,6 +49,8 @@ interface Animation {
   left: number;
   top: number;
   width: number;
+  returnY: number;
+  angle: number;
   dx: number;
   dy: number;
   tx: number;
@@ -114,6 +117,22 @@ export default function App() {
     worker.current = null;
     setDismissed("");
   }, []);
+  const finishPour = useCallback(() => {
+    clearTimeout(animationTimer.current);
+    animationTimer.current = undefined;
+    busy.current = false;
+    setAnimation(null);
+  }, []);
+  useEffect(() => {
+    if (!animation) return;
+    // The CSS completion owns normal timing. This is only a recovery path if
+    // the browser drops the event; allow time for a delayed first paint.
+    animationTimer.current = setTimeout(
+      finishPour,
+      animation.width > 0 ? animation.duration + 1500 : animation.duration,
+    );
+    return () => clearTimeout(animationTimer.current);
+  }, [animation, finishPour]);
   const act = useCallback(
     (action: Action) => {
       cancel();
@@ -125,11 +144,14 @@ export default function App() {
   );
   useEffect(() => {
     const media = matchMedia("(prefers-reduced-motion: reduce)"),
-      update = () => setSystemReduced(media.matches);
+      update = () => {
+        setSystemReduced(media.matches);
+        if (busy.current) cancel();
+      };
     update();
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
-  }, []);
+  }, [cancel]);
   useEffect(() => {
     let ok = false;
     try {
@@ -188,16 +210,16 @@ export default function App() {
       });
     window.advanceTime = (ms) => {
       if (animation && ms >= animation.duration) {
-        clearTimeout(animationTimer.current);
-        busy.current = false;
-        setAnimation(null);
+        finishPour();
       }
     };
     return () => {
       delete window.render_game_to_text;
       delete window.advanceTime;
     };
-  }, [screen, game, level, selected, hint, animation, searching, message]);
+  }, [
+    screen, game, level, selected, hint, animation, searching, message, finishPour,
+  ]);
   useEffect(() => {
     if (
       game &&
@@ -238,10 +260,10 @@ export default function App() {
     setSelected(null);
     setDismissed("");
     busy.current = true;
-    const duration = reduced ? 100 : 360;
-    const src = document
-      .querySelector(`[data-bottle="${from}"] .bottle-body`)
-      ?.getBoundingClientRect();
+    // Give travel and return their own time; larger blocks pour a little longer.
+    const duration = reduced ? 100 : 760 + pour.amount * 60;
+    const source = document.querySelector(`[data-bottle="${from}"]`);
+    const src = source?.querySelector(".bottle-body")?.getBoundingClientRect();
     const target =
       to === "collector"
         ? [...document.querySelectorAll("[data-collector]")]
@@ -250,7 +272,7 @@ export default function App() {
         : document
             .querySelector(`[data-bottle="${to}"] .bottle-body`)
             ?.getBoundingClientRect();
-    if (!reduced && src && target) {
+    if (!reduced && source && src && target) {
       const tx = target.left + target.width / 2,
         ty = target.top + (to === "collector" ? target.height / 2 : 12);
       setAnimation({
@@ -261,6 +283,9 @@ export default function App() {
         left: src.left,
         top: src.top,
         width: src.width,
+        returnY: source.getBoundingClientRect().top - src.top,
+        // Keep the body on the roomier side of the destination on narrow screens.
+        angle: tx >= window.innerWidth / 2 ? 55 : -55,
         dx: tx - src.left - src.width / 2,
         dy: ty - 48 - src.top - src.height * 0.05,
         tx,
@@ -276,6 +301,8 @@ export default function App() {
         left: 0,
         top: 0,
         width: 0,
+        returnY: 0,
+        angle: 0,
         dx: 0,
         dy: 0,
         tx: 0,
@@ -284,11 +311,6 @@ export default function App() {
       });
     dispatch({ type: "move", move: [from, to], hash: key });
     sound("pour", save.settings.sound);
-    clearTimeout(animationTimer.current);
-    animationTimer.current = setTimeout(() => {
-      busy.current = false;
-      setAnimation(null);
-    }, duration);
   }
   function onBottle(index: number) {
     if (busy.current || !game || !level || isWon(game, level)) return;
@@ -392,7 +414,18 @@ export default function App() {
   const current = unlocked(save.results),
     total = Object.values(save.results).reduce((n, r) => n + r.stars, 0),
     complete = Object.keys(save.results).length;
-  const visual = animation?.before ?? game,
+  const animatedPour = animation && animation.width > 0 ? animation : null;
+  const incoming: LiquidTransfer | undefined = animatedPour
+    ? {
+        amount: animatedPour.amount,
+        duration: animatedPour.duration,
+        direction: "in",
+      }
+    : undefined;
+  const visual = animatedPour?.before ?? game,
+    collectorUnits = animatedPour?.to === "collector" && game
+      ? game.collectorUnits
+      : visual?.collectorUnits ?? 0,
     won = game && level && isWon(game, level),
     stuck = game && level && !won && legalMoves(game, level).length === 0;
   const cols = game
@@ -709,7 +742,10 @@ export default function App() {
                 <Collector
                   variant="tall"
                   color={level.collector.color}
-                  units={visual.collectorUnits}
+                  units={collectorUnits}
+                  transfer={
+                    animatedPour?.to === "collector" ? incoming : undefined
+                  }
                   target={
                     selected !== null &&
                     !!checkMove(game, level, [selected, "collector"])
@@ -724,7 +760,10 @@ export default function App() {
                   <Collector
                     variant="compact"
                     color={level.collector.color}
-                    units={visual.collectorUnits}
+                    units={collectorUnits}
+                    transfer={
+                      animatedPour?.to === "collector" ? incoming : undefined
+                    }
                     target={
                       selected !== null &&
                       !!checkMove(game, level, [selected, "collector"])
@@ -759,7 +798,13 @@ export default function App() {
                     {visual.bottles.map((units, index) => (
                       <Bottle
                         key={index}
-                        units={units}
+                        units={
+                          animatedPour?.to === index ? game.bottles[index] : units
+                        }
+                        transfer={
+                          animatedPour?.to === index ? incoming : undefined
+                        }
+                        pouring={animatedPour?.from === index}
                         index={index}
                         selected={selected === index}
                         target={
@@ -821,11 +866,18 @@ export default function App() {
               "--pour-duration": `${animation.duration}ms`,
               "--dx": `${animation.dx}px`,
               "--dy": `${animation.dy}px`,
-              "--angle": `${animation.dx >= 0 ? 65 : -65}deg`,
+              "--return-y": `${animation.returnY}px`,
+              "--angle": `${animation.angle}deg`,
             })}
           >
             <span
               className="bottle pour-ghost"
+              onAnimationEnd={(event) => {
+                if (
+                  event.target === event.currentTarget &&
+                  event.animationName === "pour-travel"
+                ) finishPour();
+              }}
               style={
                 {
                   left: animation.left,
@@ -834,7 +886,14 @@ export default function App() {
                 } as CSSProperties
               }
             >
-              <BottleVisual units={animation.before.bottles[animation.from]} />
+              <BottleVisual
+                units={animation.before.bottles[animation.from]}
+                transfer={{
+                  amount: animation.amount,
+                  duration: animation.duration,
+                  direction: "out",
+                }}
+              />
             </span>
             <span
               className="pour-stream"
@@ -845,9 +904,6 @@ export default function App() {
               })}
             />
           </div>
-        )}
-        {screen === "game" && animation && animation.width > 0 && (
-          <style>{`[data-bottle="${animation.from}"] .bottle-body{visibility:hidden}`}</style>
         )}
         {message && (
           <div className="toast is-on" role="status">

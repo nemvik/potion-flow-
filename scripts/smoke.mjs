@@ -21,7 +21,7 @@ for (const level of levels.slice(0, 5)) {
           : `[data-bottle="${to}"]`,
       )
       .click();
-    await page.waitForTimeout(400);
+    await page.locator('.board[aria-busy="false"]').waitFor();
   }
   await page.getByRole("dialog").waitFor();
   console.log(

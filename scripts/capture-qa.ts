@@ -46,7 +46,7 @@ await shot(p, "selected");
 await p.locator('[data-bottle="1"]').click();
 await shot(p, "invalid");
 await p.locator('[data-bottle="2"]').click();
-await p.waitForTimeout(400);
+await p.locator('.board[aria-busy="false"]').waitFor();
 await p.getByRole("button", { name: "Nápověda", exact: true }).click();
 await shot(p, "hint");
 for (const move of [
@@ -55,7 +55,7 @@ for (const move of [
 ] as Move[]) {
   await p.locator(`[data-bottle="${move[0]}"]`).click();
   await p.locator(`[data-bottle="${move[1]}"]`).click();
-  await p.waitForTimeout(400);
+  await p.locator('.board[aria-busy="false"]').waitFor();
 }
 await shot(p, "win");
 await p
@@ -100,27 +100,20 @@ for (const [w, h] of [
     await p.close();
   }
 }
-// Slow only this diagnostic animation tenfold so a stable mid-pour frame can be inspected.
+// Pause all pour effects at the same midpoint for a repeatable visual check.
 p = await browser.newPage({ viewport: { width: 390, height: 844 } });
-await p.addInitScript(() => {
-  const original = window.setTimeout.bind(window);
-  window.setTimeout = ((
-    handler: TimerHandler,
-    delay?: number,
-    ...args: unknown[]
-  ) =>
-    original(
-      handler,
-      delay === 360 ? 3600 : delay,
-      ...args,
-    )) as typeof window.setTimeout;
-});
 await p.goto("http://127.0.0.1:4174");
-await p.addStyleTag({ content: ".pour-fx{--pour-duration:3600ms!important}" });
 await p.locator("#start-btn").click();
 await p.locator('[data-bottle="0"]').click();
 await p.locator('[data-bottle="2"]').click();
-await p.waitForTimeout(1450);
+await p.evaluate(() => {
+  for (const animation of document.getAnimations()) {
+    if (animation instanceof CSSAnimation && animation.animationName.startsWith("pour-")) {
+      animation.pause();
+      animation.currentTime = Number(animation.effect!.getTiming().duration) / 2;
+    }
+  }
+});
 await p.screenshot({ path: "artifacts/screenshots/final-pouring-slowed.png" });
 await p.close();
 p = await pageFor(1, 390, 844, [[1, 3]]);

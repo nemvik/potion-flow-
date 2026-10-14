@@ -70,3 +70,16 @@ Original prompt: Vytvořit kompletní funkční mobile-first React/TypeScript hr
 
 ## Úklid verzovaných výstupů
 - `artifacts/` a lokální cache `.pnpm-store/` jsou ignorované Gitem; soubory zůstávají lokálně. Zdrojové testy, QA skripty a konfigurace se nadále verzují.
+
+## Mobilní animace — 15. 10. 2026
+- Původních 360 ms zahrnovalo i přesun a návrat baňky; kapalina zůstávala ve starém stavu a na konci skokově přeskočila. Celé přelití nyní trvá 820–1000 ms podle objemu, vlastní tok probíhá mezi 28–72 % animace.
+- Úbytek i přírůstek kapaliny jsou synchronizované CSS transformace bez React aktualizací po jednotlivých snímcích. Také sběr používá scale místo animované šířky/výšky. Návrat končí na skutečné základní pozici baňky.
+- Konec řídí animationend; časovač s rezervou 1500 ms slouží jen jako pojistka. Undo/restart/navigace/skrytí/resize a změna systémového omezení pohybu animaci bezpečně ukončí. Herní tah i uložení zůstávají atomické.
+- Na dotykovém rozhraní jsou vypnuté herní dekorativní částice a SVG drop-shadow efekty výběru/cílů; zůstává zvednutí baňky a zvýraznění podstavců. Trvalé will-change na všech lahvích bylo odstraněno.
+- QA skripty čekají na skutečné odemčení boardu, nikoli pevně 400/440 ms. Nové browser regrese kontrolují mezisnímky, objemy, návrat, opožděný začátek a změnu reduced motion.
+- Vizuální kontrola našla ořez nakloněné baňky u levého okraje. Náklon nyní míří na prostornější stranu cíle; přidaná regrese ověřuje celý obrys i na šířce 320 px.
+- `pnpm test`: **79 PASS**; `pnpm levels:validate`: **30 PASS**; `pnpm typecheck`, `pnpm lint`, `pnpm build`: **PASS**. `pnpm exec playwright test`: **60 PASS (4,9 min)** v Chromiu/WebKitu včetně celé kampaně. Po finální úpravě náklonu a doplnění pojistky/320px regresí `POTION_REPORT_DIR=artifacts/playwright-mobile-motion-report pnpm exec playwright test tests/e2e/motion.spec.ts`: **16 PASS (20,2 s)**.
+- `pnpm exec tsx scripts/capture-qa.ts`: PASS bez console/page/asset chyb a externích requestů; nové snímky vizuálně prohlédnuty. Standardní herní klient vyžadoval dočasný DOM fallback pro klikání bez canvasu; výsledný stav potvrzuje jeden skutečný tah.
+- `pnpm exec tsx artifacts/profile-motion.ts`: 12 přelití na L28/L30 při běžné a 4× zpomalené CPU, 390×844, touch, DPR 2. Medián intervalů requestAnimationFrame 16,7 ms, žádný interval nad 50 ms, 3–4 layouty za přelití po jeho zahájení. Jde o headless Chromium na macOS, nikoli fyzický telefon nebo měření device FPS. Podrobnosti a snímky zůstávají lokálně v `artifacts/`.
+- Závěrečný review ověřil lifecycle callbacků/časovače, přerušení a reduced motion, transformace vrstev, zachování enginu/storage a React best practices. Fyzická zařízení zůstávají neověřená.
+- Samostatná desktopová kontrola vysokého sběru v Chromiu i WebKitu: midpoint 1/8 a konec 2/8 PASS, bez změny množství při dokončení.

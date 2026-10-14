@@ -147,11 +147,53 @@ button {
 }
 .pour-ghost {
   position: absolute;
+  width: var(--bw);
+  padding: 0;
+  display: block;
   transform-origin: 50% 5%;
-  animation: pour-travel var(--pour-duration) ease-in-out both;
+  will-change: transform;
+  animation: pour-travel var(--pour-duration) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.bottle-body {
+  transition: transform var(--pf-dur-select) var(--pf-ease-out);
+  will-change: auto;
+}
+.bottle.is-selected .bottle-body {
+  will-change: transform;
+}
+.bottle.is-pour-source .bottle-body {
+  visibility: hidden;
+}
+.pour-ghost .bottle-body {
+  transition: none;
 }
 .pour-ghost .pad {
   display: none;
+}
+.is-transferring {
+  transform-origin: bottom;
+  will-change: transform;
+  animation: pour-fill var(--pour-duration) linear both;
+  transition: none;
+}
+.tube-liquid {
+  width: 100%;
+  transform: scaleX(var(--fill));
+  transform-origin: left;
+  transition: transform var(--pf-dur-pour) linear;
+}
+.tall-fill {
+  height: 100%;
+  transform: scaleY(var(--fill));
+  transform-origin: bottom;
+  transition: transform var(--pf-dur-pour) linear;
+}
+.tube-liquid.is-transferring {
+  animation-name: pour-fill-horizontal;
+}
+.tube-liquid.is-transferring,
+.tall-fill.is-transferring {
+  transition: none;
 }
 .pour-stream {
   position: absolute;
@@ -173,27 +215,63 @@ button {
   scroll-behavior: auto !important;
 }
 @keyframes pour-travel {
-  0%,
-  100% {
-    transform: translate(0, 0) rotate(0);
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0);
   }
-  30%,
+  28%,
   72% {
-    transform: translate(var(--dx), var(--dy)) rotate(var(--angle));
+    transform: translate3d(var(--dx), var(--dy), 0) rotate(var(--angle));
+  }
+  100% {
+    transform: translate3d(0, var(--return-y), 0) rotate(0);
   }
 }
 @keyframes pour-stream {
   0%,
-  28%,
+  27%,
   78%,
   100% {
     opacity: 0;
     transform: scaleY(0);
   }
-  35%,
+  30%,
   70% {
     opacity: 1;
     transform: scaleY(1);
+  }
+}
+@keyframes pour-fill {
+  0%,
+  28% {
+    transform: scaleY(var(--liquid-from));
+  }
+  72%,
+  100% {
+    transform: scaleY(var(--liquid-to));
+  }
+}
+@keyframes pour-fill-horizontal {
+  0%,
+  28% {
+    transform: scaleX(var(--liquid-from));
+  }
+  72%,
+  100% {
+    transform: scaleX(var(--liquid-to));
+  }
+}
+/* Keep mobile compositing focused on the move, rather than animated SVG filters. */
+@media (pointer: coarse) {
+  .game .motes {
+    display: none;
+  }
+  .bottle.is-selected .bottle-body,
+  .bottle.is-target .bottle-body,
+  .bottle.is-hint-from .bottle-body,
+  .bottle.is-hint-to .bottle-body,
+  .collector.tall.is-target .tall-body,
+  .collector.tall.is-hint-to .tall-body {
+    filter: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {

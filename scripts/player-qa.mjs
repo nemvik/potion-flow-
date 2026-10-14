@@ -76,7 +76,7 @@ for await (const line of createInterface({
               : `[data-bottle="${command[1]}"]`,
           )
           .click();
-        await page.waitForTimeout(440);
+        await page.locator('.board[aria-busy="false"]').waitFor();
       } else if (command.resumeLevel) {
         // Navigation fixture only: previously completed levels. New board is started through level selector.
         await page.evaluate(

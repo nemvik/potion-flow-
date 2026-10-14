@@ -54,12 +54,34 @@ export function Stars({ count }: { count: number }) {
     </span>
   );
 }
-export function LiquidLayer({ color, count }: { color: Color; count: number }) {
+export interface LiquidTransfer {
+  amount: number;
+  duration: number;
+  direction: "in" | "out";
+}
+function transferStyle(transfer: LiquidTransfer, count: number, capacity = count) {
+  const remaining = (count - transfer.amount) / capacity;
+  return css({
+    "--pour-duration": `${transfer.duration}ms`,
+    "--liquid-from": transfer.direction === "in" ? remaining : count / capacity,
+    "--liquid-to": transfer.direction === "in" ? count / capacity : remaining,
+  });
+}
+export function LiquidLayer({
+  color, count, transfer,
+}: {
+  color: Color;
+  count: number;
+  transfer?: LiquidTransfer;
+}) {
   return (
     <span
-      className="seg"
+      className={`seg${transfer ? " is-transferring" : ""}`}
       data-color={color}
-      style={css({ "--c": `var(--liq-${color})`, height: `${count * 25}%` })}
+      style={{
+        ...css({ "--c": `var(--liq-${color})`, height: `${count * 25}%` }),
+        ...(transfer && transferStyle(transfer, count)),
+      }}
     >
       {Array.from({ length: count }, (_, i) => (
         <span key={i} className="unit">
@@ -69,7 +91,12 @@ export function LiquidLayer({ color, count }: { color: Color; count: number }) {
     </span>
   );
 }
-export function BottleVisual({ units }: { units: Color[] }) {
+export function BottleVisual({
+  units, transfer,
+}: {
+  units: Color[];
+  transfer?: LiquidTransfer;
+}) {
   const groups: { color: Color; count: number }[] = [];
   for (const color of units) {
     const last = groups.at(-1);
@@ -82,7 +109,11 @@ export function BottleVisual({ units }: { units: Color[] }) {
         <Icon name="pf-glass-back" />
         <span className="liquid">
           {groups.map((g, i) => (
-            <LiquidLayer key={i} {...g} />
+            <LiquidLayer
+              key={i}
+              {...g}
+              transfer={i === groups.length - 1 ? transfer : undefined}
+            />
           ))}
         </span>
         <Icon name="pf-glass-front" />
@@ -114,6 +145,8 @@ export function Bottle({
   invalid,
   onClick,
   corked = false,
+  pouring = false,
+  transfer,
 }: {
   units: Color[];
   index: number;
@@ -123,6 +156,8 @@ export function Bottle({
   invalid: boolean;
   onClick: () => void;
   corked?: boolean;
+  pouring?: boolean;
+  transfer?: LiquidTransfer;
 }) {
   const description = units.length
     ? "odspodu " + units.map((c) => COLORS[c].name).join(", ")
@@ -142,10 +177,11 @@ export function Bottle({
         invalid ? "is-invalid" : "",
         isDone(units) ? "is-done" : "",
         corked ? "is-corked" : "",
+        pouring ? "is-pour-source" : "",
       ].join(" ")}
       style={css({ "--done-c": `var(--liq-${units[0] ?? "R"})` })}
     >
-      <BottleVisual units={units} />
+      <BottleVisual units={units} transfer={transfer} />
       {hint && (
         <span className="badge n" aria-hidden="true">
           {hint}
@@ -167,6 +203,7 @@ export function Collector({
   hint,
   invalid,
   onClick,
+  transfer,
 }: {
   color: Color;
   units: number;
@@ -175,6 +212,7 @@ export function Collector({
   hint: boolean;
   invalid: boolean;
   onClick: () => void;
+  transfer?: LiquidTransfer;
 }) {
   const label = (
     <span className="col-label">
@@ -211,7 +249,10 @@ export function Collector({
         <>
           {label}
           <span className="tube">
-            <span className="tube-liquid" />
+            <span
+              className={`tube-liquid${transfer ? " is-transferring" : ""}`}
+              style={transfer && transferStyle(transfer, units, 8)}
+            />
             <span className="tube-ticks" />
           </span>
         </>
@@ -220,7 +261,10 @@ export function Collector({
           <span className="tall-body">
             <Icon name="pf-col-back" />
             <span className="tall-liquid">
-              <span className="tall-fill" />
+              <span
+                className={`tall-fill${transfer ? " is-transferring" : ""}`}
+                style={transfer && transferStyle(transfer, units, 8)}
+              />
             </span>
             <span className="tall-liquid tall-units">
               {Array.from({ length: 8 }, (_, i) => (
