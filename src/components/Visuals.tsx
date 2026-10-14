@@ -17,8 +17,13 @@ export const CHAPTERS = [
   "Hvězdná destilerie",
   "Mistrovská observatoř",
   "Prastarý archiv",
+  "Křišťálová věž",
+  "Sluneční alchymie",
+  "Zrcadlové komnaty",
+  "Astrální kovárna",
+  "Koruna alchymistů",
 ];
-export const CHAPTER_NUMERALS = ["I", "II", "III", "IV", "V"];
+export const CHAPTER_NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 export function css(vars: Record<string, string | number>): CSSProperties {
   return vars as CSSProperties;
 }

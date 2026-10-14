@@ -11,14 +11,15 @@ import {
 import { solveLevel } from "../src/game/solver";
 import { shapeKey, validateCatalog } from "../src/game/catalog-validation";
 import { LEVEL_COUNT } from "../src/game/campaign";
+import { generateAdvancedLevels } from "./advanced-levels";
 const seed = Number(
   process.argv.find((a) => a.startsWith("--seed="))?.split("=")[1] ?? 74129,
 );
 const count = Number(
   process.argv.find((a) => a.startsWith("--count="))?.split("=")[1] ?? LEVEL_COUNT,
 );
-if (!Number.isSafeInteger(seed) || ![5, 30, LEVEL_COUNT].includes(count))
-  throw Error(`Použij --seed=<celé číslo> a --count=5|30|${LEVEL_COUNT}`);
+if (!Number.isSafeInteger(seed) || ![5, 30, 50, LEVEL_COUNT].includes(count))
+  throw Error(`Použij --seed=<celé číslo> a --count=5|30|50|${LEVEL_COUNT}`);
 let rng = seed >>> 0;
 function random() {
   rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0;
@@ -75,7 +76,7 @@ const handcrafted: Partial<Level>[] = [
 ];
 const levels: Level[] = [],
   shapes = new Set<string>();
-for (let id = 1; id <= count; id++) {
+for (let id = 1; id <= Math.min(count, 50); id++) {
   const mode = id % 5 === 0 ? "collector" : "classic",
     chapter = Math.ceil(id / 10);
   let accepted: Level | undefined;
@@ -183,6 +184,7 @@ for (let id = 1; id <= count; id++) {
     `Level ${id}: ${accepted.bottles.length} baněk, ${accepted.solution.length} ověřených tahů`,
   );
 }
+if (count > 50) levels.push(...generateAdvancedLevels(levels, seed));
 validateCatalog(levels, count);
 const destination = new URL("../src/levels/catalog.json", import.meta.url);
 const encoded = JSON.stringify(levels, null, 2) + "\n";

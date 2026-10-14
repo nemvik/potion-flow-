@@ -93,7 +93,7 @@ for (const [w, h] of [
   [768, 1024],
   [1440, 900],
 ]) {
-  for (const id of [28, 30, 49, 50]) {
+  for (const id of [51, 75, 99, 100]) {
     p = await pageFor(id, w, h);
     await p.locator("#start-btn").click();
     await shot(p, `${w}x${h}-level${id}`);

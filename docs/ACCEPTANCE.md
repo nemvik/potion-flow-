@@ -25,8 +25,8 @@ Hra je hotová pouze tehdy, když jsou implementované funkce skutečně ověře
 
 ## B. Katalog, solver a skóre
 
-19. Existuje přesně 50 jedinečných levelů; Sběr používají přesně ID 5, 10, 15, 20, 25, 30, 35, 40, 45 a 50. Původních 30 zadání a certifikátů se nezměnilo.
-20. Pro všech 50 levelů sedí kapacity, počty barev, počet počátečních prázdných baněk a limity velikosti boardu.
+19. Existuje přesně 100 jedinečných levelů; Sběr používá přesně každý násobek pěti od 5 do 100. Původních 50 zadání a certifikátů se nezměnilo.
+20. Pro všech 100 levelů sedí kapacity, počty barev, počet počátečních prázdných baněk a limity velikosti boardu.
 21. Každé uložené řešení se přehraje od začátku, každý krok je legální a poslední stav vyhraje. Samotné tvrzení generátoru nestačí.
 22. Žádný startovní level není již vyřešený. Katalog nemá zjevné duplikáty vzniklé jen přejmenováním barev/permutací lahví.
 23. `parMoves` je délka ověřené rozumné cesty; UI ji neoznačuje za optimální, pokud optimalita nebyla dokázána.
@@ -37,7 +37,7 @@ Hra je hotová pouze tehdy, když jsou implementované funkce skutečně ověře
 28. Opožděná odpověď workeru se ignoruje po novém tahu, undo, restartu a změně levelu.
 29. Dlouhá žádost o hint neblokuje UI; lze ji zneplatnit přechodem či novým stavem.
 30. Hvězdy odpovídají všem hraničním hodnotám vzorce a starší lepší výsledek se nepřepíše horším.
-31. Odemknutí postupu je správné, vítězství je idempotentní a level 30 odemyká 31 a level 50 neodemyká neexistující level 51. Starý postup i rozehrání se po rozšíření obnoví.
+31. Odemknutí postupu je správné, vítězství je idempotentní a level 30 odemyká 31, level 50 odemyká 51 a level 100 neodemyká neexistující level 101. Starý postup i rozehrání se po rozšíření obnoví.
 
 ## C. Ukládání
 
@@ -67,7 +67,7 @@ Hra je hotová pouze tehdy, když jsou implementované funkce skutečně ověře
 ## Povinné výstupy
 
 - Zdrojový projekt, lockfile a README s reálnými příkazy pro spuštění a statický build.
-- 50 katalogových levelů a jejich řešení, generátor a validátor.
+- 100 katalogových levelů a jejich řešení, generátor a validátor.
 - Provedené unit/E2E testy a konzistentní skripty typecheck/lint/build.
 - `artifacts/screenshots/`: nejméně mobilní Classic, mobilní Sběr, největší board, výhra, výběr levelů a desktop. K nim screenshoty relevantní designové reference pro porovnání.
 - `artifacts/QA_REPORT.md`: spuštěné příkazy, pass/fail, prohlížeče a viewporty, screenshoty, skutečné platformy, zbylá omezení a problémy.
@@ -80,3 +80,9 @@ Headless WebKit je test WebKitu v daném prostředí, nikoli důkaz fyzického t
 - Konfety se objeví až po posledním přelití, neblokují Další level a samy zmizí. Při obou typech reduced motion se nezobrazují.
 - Levely 31–50 splňují doložené prahy promíchání, barevného rozptylu a délky certifikátu z GAME_SPEC. Všechna řešení se přehrají i přes skutečné UI.
 - Ověřit mobilní i desktopovou podobu nové kapitoly a přechod starého uloženého finále L30 → L31.
+
+## Rozšíření — vzestupná řada 51–100
+
+- Přepočítat tříprůchodové profily všech nových zadání a porovnat s uloženými metrikami. Hodnocení musí striktně růst s ID a délka vybrané cesty nesmí klesat; první nové hodnocení převyšuje L50 měřený stejnou metodou.
+- Ověřit přesné zachování původních 50 záznamů, save/catalog v1, návaznost uloženého L50 → L51, deset kapitol, 300 hvězd a finále L100 bez L101.
+- Přehraj všechny certifikáty v enginu i přes skutečné UI, ověř mobilní a desktopové boardy nových kapitol.

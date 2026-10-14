@@ -17,6 +17,12 @@ export interface Level {
   solution: Move[];
   parMoves: number;
   difficultyNote: string;
+  difficulty?: {
+    rating: number;
+    searchStates: number;
+    transitions: number;
+    spread: number;
+  };
 }
 export interface HistoryEntry {
   move: Move;

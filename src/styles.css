@@ -350,6 +350,26 @@ button {
   --pf-chapter: #f3adcb;
   --pf-bg-glow: #493e63;
 }
+[data-chapter="6"] {
+  --pf-chapter: #94e0f0;
+  --pf-bg-glow: #25536b;
+}
+[data-chapter="7"] {
+  --pf-chapter: #ffe08a;
+  --pf-bg-glow: #48533a;
+}
+[data-chapter="8"] {
+  --pf-chapter: #d5c4ff;
+  --pf-bg-glow: #41476b;
+}
+[data-chapter="9"] {
+  --pf-chapter: #ffa7a0;
+  --pf-bg-glow: #58444f;
+}
+[data-chapter="10"] {
+  --pf-chapter: #fff0b0;
+  --pf-bg-glow: #3a5655;
+}
 .bottle.is-done .pad {
   height: 16px;
   background: radial-gradient(closest-side, #ffe08a9c, #ffe08a24 65%, transparent);

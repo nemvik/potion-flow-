@@ -6,7 +6,7 @@ Status: implementační zadání, nikoli hotová aplikace. Název je pracovní; 
 
 Mobile-first webová singleplayer logická hra inspirovaná přeléváním barevných vrstev. Hráč má během několika sekund pochopit ovládání, zažít uspokojivé přelití a chtít pokračovat na další level. Cílová délka běžného levelu je přibližně 1–3 minuty; je to návrhový cíl k ověření hraním, ne zaručená metrika.
 
-Aktuální verze má 50 konkrétních levelů, dvě související varianty pravidel, postup po kapitolách, hvězdy, neomezené undo/restart, nápověda a lokální ukládání. Nejsou zde reklamy, energie, placené boostery, skutečné peníze, účty, multiplayer, analytické SDK ani server. Nepřidávat klíče, zamčené lahve, skryté vrstvy, led, měnící se barvy ani jiné překážky.
+Aktuální verze má 100 konkrétních levelů, dvě související varianty pravidel, postup po kapitolách, hvězdy, neomezené undo/restart, nápověda a lokální ukládání. Nejsou zde reklamy, energie, placené boostery, skutečné peníze, účty, multiplayer, analytické SDK ani server. Nepřidávat klíče, zamčené lahve, skryté vrstvy, led, měnící se barvy ani jiné překážky.
 
 Velká sběrná baňka je varianta cíle, ne dekorace maskující neexistující mechaniku. Každý pátý level používá Sběr. Tyto levely mají změnit rytmus hry; nepovažovat je automaticky za obtížnější „bossy“.
 
@@ -80,7 +80,7 @@ Nápověda pracuje s aktuálním boardem. Pokud se jeho hash shoduje se stavem n
 
 Zobraz jen první tah skutečně nalezené legální cesty. Při nedokončeném hledání napiš například „Nápovědu se teď nepodařilo spočítat. Zkus vrátit poslední tah.“ Nevydávej náhodný legální tah za vypočítanou nápovědu k řešení. Ve startovním stavu každého levelu musí být rychlá nápověda z certifikátu dostupná.
 
-## 7. Katalog 50 levelů
+## 7. Katalog 100 levelů
 
 | Levely | Cílové zaměření | Barvy |
 |---|---|---|
@@ -90,12 +90,19 @@ Zobraz jen první tah skutečně nalezené legální cesty. Při nedokončeném 
 | 21–30 | Náročnější plánování | Classic 6–8, Sběr 6–7 |
 | 31–40 | Mistrovská observatoř: rozptýlené barvy, nejméně 22 střídání vrstev | Classic 8, Sběr 7 |
 | 41–50 | Prastarý archiv: nejméně 23 střídání vrstev, hlubší plánování | Classic 8, Sběr 7 |
+| 51–60 | Křišťálová věž: první stupeň nové vzestupné řady | Classic 8, Sběr 7 |
+| 61–70 | Sluneční alchymie: delší cesty a vyšší kombinované hodnocení | Classic 8, Sběr 7 |
+| 71–80 | Zrcadlové komnaty: složitější hledání při stejné délkové třídě | Classic 8, Sběr 7 |
+| 81–90 | Astrální kovárna: další délkový stupeň | Classic 8, Sběr 7 |
+| 91–100 | Koruna alchymistů: nejvyšší hodnocení nové řady | Classic 8, Sběr 7 |
 
-Sběrné jsou přesně levely 5, 10, 15, 20, 25, 30, 35, 40, 45 a 50. Na začátku každého levelu jsou dvě běžné prázdné baňky. Herní board je od začátku plně viditelný. Nepoužívat náhodně skrývané vrstvy nebo náhodné tresty.
+Sběrné jsou přesně násobky pěti od 5 do 100. Na začátku každého levelu jsou dvě běžné prázdné baňky. Herní board je od začátku plně viditelný. Nepoužívat náhodně skrývané vrstvy nebo náhodné tresty.
 
-Pět kapitol po deseti levelech může sdílet mírně odlišné pozadí a dekorace. Kapitola je vizuální odměna, nikoli nový subsystém vybavení. Odemkne se dokončením předchozího levelu; k postupu stačí jakékoli vítězství, hvězdy nejsou paywall ani povinný grind.
+Deset kapitol po deseti levelech může sdílet mírně odlišné pozadí a dekorace. Kapitola je vizuální odměna, nikoli nový subsystém vybavení. Odemkne se dokončením předchozího levelu; k postupu stačí jakékoli vítězství, hvězdy nejsou paywall ani povinný grind.
 
-Rozšíření je append-only: původních 30 zadání, certifikátů, ID a katalogová verze 1 zůstávají beze změny kvůli uloženému postupu. Dokončení levelu 30 nyní odemyká 31; finále je level 50. V nových kapitolách je každá barva rozptýlená nejméně ve třech baňkách. Nalezené certifikáty mají nejméně 30 tahů pro levely 31–40 a 31 tahů pro 41–50; tyto délky nejsou důkazem optimální obtížnosti.
+Rozšíření je append-only: původních 50 zadání, certifikátů, ID a katalogová verze 1 zůstávají beze změny kvůli uloženému postupu. Dokončení levelu 30 odemyká 31 a dokončení 50 nyní odemyká 51; finále je level 100. V kapitolách 31–50 je každá barva rozptýlená nejméně ve třech baňkách. Nalezené certifikáty mají nejméně 30 tahů pro levely 31–40 a 31 tahů pro 41–50; tyto délky nejsou důkazem optimální obtížnosti.
+
+Nové levely 51–100 mají navíc profil `difficulty`. Každá barva se vyskytuje nejméně ve třech lahvích a zadání má alespoň 22 barevných hranic. Offline hodnocení prozkoumá tři pořadí lahví s limitem 20 000 stavů a 5 sekund na průchod, vezme nejkratší nalezené řešení a nejmenší počet navštívených pozic, tahy přemapuje na uložený board. Skóre je zaokrouhlený součet `10 × délka cesty + 100 × log2(pozice / korekce) + 10 × hranice + 5 × rozptyl`; korekce je 1 pro Classic a 1,6 pro větší větvení Sběru. Skóre každého následujícího nového levelu musí být vyšší a délka nalezené cesty nesmí klesnout. Nová řada používá 28 tahů pro 51–60, 29 pro 61–80 a 30 pro 81–100. Tříprůchodové hodnocení L50 tvoří dolní hranici nové řady; původní řešení L50 se nepřepisuje. Toto je reprodukovatelný návrhový odhad, nikoli důkaz optimální vzdálenosti nebo subjektivně přísně rostoucí lidské obtížnosti.
 
 Každý katalogový záznam obsahuje alespoň `id`, `catalogVersion`, `chapter`, `mode`, `bottles`, případný collector descriptor, `solution`, `parMoves` a stručnou poznámku k obtížnosti. Odvozené počty barev a jednotek ověřit, nikoli slepě důvěřovat metadatům.
 

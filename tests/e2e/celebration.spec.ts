@@ -93,32 +93,34 @@ test.describe("hotové lahve a oslava", () => {
     });
   }
 
-  test("starý dokončený level 30 naváže na novou kapitolu a zachová postup", async ({ page }, info) => {
+  for (const completed of [30, 50]) {
+  test(`starý dokončený level ${completed} naváže na novou kapitolu a zachová postup`, async ({ page }, info) => {
     // A persisted v1 save in the exact pre-extension format, loaded only once.
     const save = defaults();
     save.settings.sound = false;
     save.settings.reduced = true;
-    save.results = Object.fromEntries(levels.slice(0, 30).map(l => [l.id, { stars: 3, bestMoves: l.parMoves }]));
-    save.game = replay(levels[29]);
+    save.results = Object.fromEntries(levels.slice(0, completed).map(l => [l.id, { stars: 3, bestMoves: l.parMoves }]));
+    save.game = replay(levels[completed - 1]);
     await page.goto("/");
     await page.evaluate(({ key, value }) => localStorage.setItem(key, value), { key: STORAGE_KEY, value: serialize(save) });
     await page.reload();
     await page.locator("#start-btn").tap();
     await expect(page.getByRole("dialog")).toContainText("Lektvary roztříděny!");
     await page.getByRole("button", { name: "Další level", exact: true }).tap();
-    await expect(page.getByRole("region", { name: "Level 31", exact: true })).toBeVisible();
-    await expect(page.getByText("Kapitola IV · Mistrovská observatoř")).toBeVisible();
-    await page.screenshot({ path: `artifacts/screenshots/new-level31-${info.project.name}.png` });
-    await pour(page, levels[30].solution[0]);
+    await expect(page.getByRole("region", { name: `Level ${completed + 1}`, exact: true })).toBeVisible();
+    await expect(page.getByText(completed === 30 ? "Kapitola IV · Mistrovská observatoř" : "Kapitola VI · Křišťálová věž")).toBeVisible();
+    await page.screenshot({ path: `artifacts/screenshots/new-level${completed + 1}-${info.project.name}.png` });
+    await pour(page, levels[completed].solution[0]);
     await page.reload();
     await page.locator("#start-btn").tap();
     expect(JSON.parse(await page.evaluate(() => window.render_game_to_text!())).moves).toBe(1);
     await page.getByRole("button", { name: "Zpět na levely" }).tap();
-    await expect(page.getByRole("button", { name: "Level 31, aktuální", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Level 41, zamčeno", exact: true })).toHaveAttribute("aria-disabled", "true");
+    await expect(page.getByRole("button", { name: `Level ${completed + 1}, aktuální`, exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: `Level ${completed + 11}, zamčeno`, exact: true })).toHaveAttribute("aria-disabled", "true");
     await page.getByRole("button", { name: "Zpět na úvod" }).tap();
-    await expect(page.getByText("/ 50 hotovo", { exact: false })).toBeVisible();
+    await expect(page.getByText("/ 100 hotovo", { exact: false })).toBeVisible();
     const stored = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY);
-    expect(Object.keys(stored.results)).toHaveLength(30);
+    expect(Object.keys(stored.results)).toHaveLength(completed);
   });
+  }
 });

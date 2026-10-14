@@ -5,7 +5,7 @@ import { initial, play, type Move } from "../../src/game/model";
 async function state(page: Page) {
   return JSON.parse(await page.evaluate(() => window.render_game_to_text!()));
 }
-async function pour(page: Page, move: Move) {
+async function pour(page: Page, move: Move, advanceAnimation = false) {
   await page.locator(`[data-bottle="${move[0]}"]`).click();
   await page
     .locator(
@@ -14,6 +14,9 @@ async function pour(page: Page, move: Move) {
         : `[data-bottle="${move[1]}"]`,
     )
     .click();
+  // Campaign coverage uses the existing time-step hook only to finish its reduced
+  // animation. Every move and win still comes from the real UI and engine.
+  if (advanceAnimation) await page.evaluate(() => window.advanceTime!(100));
   await expect(
     page.getByRole("group", { name: "Herní plocha" }),
   ).toHaveAttribute("aria-busy", "false");
@@ -35,7 +38,7 @@ async function seed(page: Page, id = 1, moves: Move[] = [], reduced = false) {
 test("celá kampaň skutečnými UI tahy, hvězdy, postup a finále", async ({
   page,
 }) => {
-  test.setTimeout(480000);
+  test.setTimeout(900000);
   const errors: string[] = [],
     external: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -58,7 +61,7 @@ test("celá kampaň skutečnými UI tahy, hvězdy, postup a finále", async ({
   await page.getByRole("button", { name: "Zavřít", exact: true }).click();
   await page.locator("#start-btn").click();
   for (const level of levels) {
-    for (const m of level.solution) await pour(page, m);
+    for (const m of level.solution) await pour(page, m, true);
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByRole("dialog")).toContainText(
       level.id === levels.length ? "Kampaň dokončena!" : "Lektvary roztříděny!",
@@ -73,8 +76,10 @@ test("celá kampaň skutečnými UI tahy, hvězdy, postup a finále", async ({
       .click();
   }
   await expect(
-    page.getByRole("button", { name: /Level 50, Sběr, hotovo, 3 hvězd/ }),
+    page.getByRole("button", { name: /Level 100, Sběr, hotovo, 3 hvězd/ }),
   ).toBeVisible();
+  await expect(page.getByRole("button", { name: /Level 101,/ })).toHaveCount(0);
+  await expect(page.locator(".star-total")).toHaveAttribute("aria-label", "300 z 300 hvězd");
   const raw = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!),
     STORAGE_KEY,
@@ -312,7 +317,7 @@ for (const [width, height] of [
   [768, 1024],
   [1440, 900],
 ]) {
-  for (const id of [49, 50])
+  for (const id of [99, 100])
     test(`layout ${width}×${height}, level ${id}`, async ({ page }) => {
       await page.setViewportSize({ width, height });
       await seed(page, id, [], true);

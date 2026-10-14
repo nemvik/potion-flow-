@@ -1,6 +1,6 @@
 # POTION FLOW
 
-Mobile-first logická hra v češtině: 50 konkrétních hádanek, Classic a Sběr každý pátý level. React, strict TypeScript, Vite, čistý TypeScript engine, lokální SVG/CSS a zvuky syntetizované přes Web Audio. Bez backendu a externích runtime požadavků.
+Mobile-first logická hra v češtině: 100 konkrétních hádanek, Classic a Sběr každý pátý level. React, strict TypeScript, Vite, čistý TypeScript engine, lokální SVG/CSS a zvuky syntetizované přes Web Audio. Bez backendu a externích runtime požadavků.
 
 ## Spuštění
 
@@ -60,7 +60,7 @@ pnpm levels:validate
 
 Generátor přepíše pouze katalog po úspěšné validaci všech kandidátů. Pro původní první milník lze použít `--count=5`; takový vývojový katalog není určen k finálnímu vydání. Pro jiný seed nejprve zkontroluj obtížnost a screenshoty. Ověřené řešení nemusí být nejkratší a delší certifikát sám o sobě neurčuje zábavnost.
 
-Kampaň má pět kapitol; nové levely 31–50 mají 7–8 barev, větší rozptyl barev mezi lahvemi a ověřené cesty o 30–32 tazích. Původních 30 zadání zůstává stejných, starý postup se zachová a dokončený level 30 nově odemyká level 31. Špunt a zlatá pečeť označují hotovou barvu, ze které lze dál přelévat. Po výhře se krátce zobrazí konfety, pokud nejsou omezené animace.
+Kampaň má deset kapitol; nové levely 31–50 mají 7–8 barev, větší rozptyl barev mezi lahvemi a ověřené cesty o 30–32 tazích. Levely 51–100 mají striktně rostoucí kombinované hodnocení obtížnosti a neklesající délku nejkratší ze tří nalezených cest. Původních 50 zadání a řešení zůstává stejných; starý postup se zachová, dokončený level 50 nyní odemyká level 51 a finále je level 100. Hodnocení kombinuje práci řešiče, promíchání, rozptyl barev a délku cesty; není důkazem matematického optima ani lidské obtížnosti. Špunt a zlatá pečeť označují hotovou barvu, ze které lze dál přelévat. Po výhře se krátce zobrazí konfety, pokud nejsou omezené animace.
 
 Lokální uložení má klíč `potion-flow:save:v1`. Data jsou jen v daném prohlížeči; vymazání dat webu odstraní postup. Pokud storage nefunguje, hra pokračuje v paměti a zobrazí vysvětlení. Neplatná rozehraná data se neobnoví, platný postup a nastavení se zachovají, kdykoli to formát dovolí.
 

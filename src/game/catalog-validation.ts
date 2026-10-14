@@ -10,6 +10,7 @@ import {
   type Level,
 } from "./model";
 import { LEVEL_COUNT, LEVELS_PER_CHAPTER } from "./campaign";
+import { difficultyRating, mixing } from "./catalog-difficulty";
 // Exhaust all <= 8! color renamings, sorting bottles each time: exact duplicate check up to both symmetries.
 export function shapeKey(level: Level): string {
   const colors = [...new Set(level.bottles.flat())];
@@ -95,6 +96,16 @@ export function validateLevel(level: Level): void {
   assertPosition(finish, level);
   if (!isWon(finish, level))
     throw Error(`Level ${level.id}: certifikát nevyhrál`);
+  if (level.id > 50) {
+    const d = level.difficulty;
+    const actual = mixing(level);
+    if (!d || !Number.isInteger(d.searchStates) || d.searchStates < 1 ||
+      d.searchStates > 20000 || d.transitions !== actual.transitions ||
+      d.spread !== actual.spread || actual.transitions < 22 ||
+      Object.keys(cs).some((c) => level.bottles.filter((b) => b.some((unit) => unit === c)).length < 3) ||
+      d.rating !== difficultyRating(level.parMoves, d.searchStates, actual.transitions, actual.spread, level.mode))
+      throw Error(`Level ${level.id}: neplatný profil obtížnosti`);
+  }
 }
 export function validateCatalog(levels: Level[], expected = LEVEL_COUNT): void {
   if (levels.length !== expected) throw Error(`Očekáváno ${expected} levelů`);
@@ -103,6 +114,9 @@ export function validateCatalog(levels: Level[], expected = LEVEL_COUNT): void {
   for (const [index, l] of levels.entries()) {
     if (l.id !== index + 1) throw Error("Nesouvislé pořadí levelů");
     validateLevel(l);
+    if (l.id > 51 && (l.difficulty!.rating <= levels[index - 1].difficulty!.rating ||
+      l.parMoves < levels[index - 1].parMoves))
+      throw Error(`Level ${l.id}: obtížnost není rostoucí`);
     const key = shapeKey(l);
     if (shapes.has(key) || ids.has(l.id))
       throw Error(`Duplicitní level ${l.id}`);

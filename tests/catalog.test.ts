@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createHash } from "node:crypto";
 import { levels } from "../src/levels";
 import { shapeKey, validateCatalog } from "../src/game/catalog-validation";
+import { assessDifficulty } from "../scripts/advanced-levels";
 import {
   certificateHint,
   checkMove,
@@ -11,21 +12,21 @@ import {
 } from "../src/game/model";
 describe("stabilní katalog", () => {
   it(
-    "všech 50 levelů je unikátních a dopředně vyhrává",
+    "všech 100 levelů je unikátních a dopředně vyhrává",
     () => validateCatalog(levels),
     20000,
   );
   it("Sběr je přesně každý pátý level", () =>
     expect(
       levels.filter((l) => l.mode === "collector").map((l) => l.id),
-    ).toEqual([5, 10, 15, 20, 25, 30, 35, 40, 45, 50]));
-  it("původních 30 zadání a certifikátů se nezměnilo", () => {
-    expect(createHash("sha256").update(JSON.stringify(levels.slice(0, 30))).digest("hex"))
-      .toBe("533360d2cbfa81aea84d8d886ab1a1f91aa351d3717af906adc02e4501402053");
+    ).toEqual(Array.from({ length: 20 }, (_, i) => (i + 1) * 5)));
+  it("původních 50 zadání a certifikátů se nezměnilo", () => {
+    expect(createHash("sha256").update(JSON.stringify(levels.slice(0, 50))).digest("hex"))
+      .toBe("2e1bd3463dc900bbf9d97c33ca4ee6c264948c809998c856020cf15a0f3ec038");
   });
   it("nové kapitoly používají rozptýlené barvy a hustší střídání vrstev", () => {
-    expect(levels).toHaveLength(50);
-    for (const level of levels.slice(30)) {
+    expect(levels).toHaveLength(100);
+    for (const level of levels.slice(30, 50)) {
       const colors = [...new Set(level.bottles.flat())];
       expect(colors).toHaveLength(level.collector ? 7 : 8);
       const transitions = level.bottles.reduce((sum, b) => sum + b.filter((c, i) => i > 0 && b[i - 1] !== c).length, 0);
@@ -34,6 +35,22 @@ describe("stabilní katalog", () => {
       for (const color of colors) expect(level.bottles.filter((b) => b.includes(color)).length).toBeGreaterThanOrEqual(3);
     }
   });
+  it("dalších 50 levelů má rostoucí hodnocení a neklesající délku ověřených cest", () => {
+    const added = levels.slice(50);
+    expect(added).toHaveLength(50);
+    const boundary = assessDifficulty(levels[49])!;
+    let rating = boundary.difficulty!.rating;
+    let moves = 0;
+    for (const level of added) {
+      const assessed = assessDifficulty(level)!;
+      expect(assessed.difficulty).toEqual(level.difficulty);
+      expect(assessed.solution).toEqual(level.solution);
+      expect(level.difficulty!.rating).toBeGreaterThan(rating);
+      expect(level.parMoves).toBeGreaterThanOrEqual(moves);
+      rating = level.difficulty!.rating;
+      moves = level.parMoves;
+    }
+  }, 20000);
   it.each(levels)("Level $id má okamžitý legální hint i certifikát", (l) => {
     expect(
       checkMove(initial(l), l, certificateHint(l, initial(l))!),

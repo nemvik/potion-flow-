@@ -33,3 +33,7 @@ Denní výzvu, nekonečný generovaný režim, PWA/service worker, cloud save, �
 ## M5 — dokončené lahve, oslava a rozšíření kampaně
 
 Přidat špunty a zlaté označení plných jednobarevných lahví při zachování legálních tahů a undo. Přidat krátkou oslavu konfetami respektující reduced motion. Rozšířit katalog na 50 levelů dvěma obtížnějšími kapitolami, přitom zachovat původních 30 levelů i verzovaný save. Ověřit všechna řešení, deterministické generování, celou kampaň přes UI, kompatibilitu starého finále a mobilní vizuál.
+
+## M6 — levely 51–100 s měřitelně rostoucí obtížností
+
+Přidat pět kapitol, přesně 50 nových unikátních zadání a reprodukovatelné kombinované hodnocení. Původních 50 záznamů a save/catalog v1 zachovat. Pro každý nový level ověřit řešení i tříprůchodový profil, striktně rostoucí skóre a neklesající délku nejkratší nalezené cesty. Dokončit UI deseti kapitol, přechod L50 → L51, finále L100, plnou browser kampaň, vizuální QA a závěrečný review.
